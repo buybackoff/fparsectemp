@@ -1,8 +1,27 @@
-<Project Sdk="FSharp.NET.Sdk;Microsoft.NET.Sdk" ToolsVersion="15.0">
-  <Import Project="..\FParsec.Samples.Common.targets" />
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <Import Project="../../Build/common.props" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TargetFrameworks>net462</TargetFrameworks>
+    <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
+    <OtherFlags>/nooptimizationdata</OtherFlags>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="ast.fs" />
     <Compile Include="parser.fs" />
     <Compile Include="main.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="test_json.txt">
+      <CopyToOutputDirectory Condition="Exists('test_json.txt')">PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\FParsecCS\FParsecCS.csproj" />
+    <ProjectReference Include="..\..\FParsec\FParsec.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Spreads" Version="1.0.0-build1811230316R" />
   </ItemGroup>
 </Project>

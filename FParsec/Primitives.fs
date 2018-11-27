@@ -86,7 +86,8 @@ let (>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
         else
             Reply(reply1.Status, reply1.Error)
 
-let (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
+
+let inline (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
     fun stream ->
         let mutable reply1 = p stream
         if reply1.Status = Ok then

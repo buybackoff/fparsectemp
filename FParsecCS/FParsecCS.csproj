@@ -1,22 +1,25 @@
-<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
-
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <Import Project="..\Build\common.props" />
   <PropertyGroup>
-    <TargetFrameworks>net40-client;net45;netstandard1.6;portable-net45+win8+wp8+wpa81</TargetFrameworks>
+    <LowTrust>false</LowTrust>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>    
     <NoWarn>1591</NoWarn>
     <IsPackable Condition="'$(MergedFParsecPackage)' == 'true'">false</IsPackable>
-  </PropertyGroup>
-
-  <Import Project="..\Build\FParsec.Common.targets" />
+    <DefineConstants>$(DefineConstants);AGGRESSIVE_INLINING</DefineConstants>
+  </PropertyGroup> 
 
   <ItemGroup>
     <Compile Include="Properties\*.cs" />
     <Compile Include="*.cs" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'">
-    <PackageReference Include="System.Globalization.Extensions" Version="4.*" />
+  <ItemGroup>
+    <PackageReference Include="System.Globalization.Extensions" Version="4.3.0" />
+    <PackageReference Include="FSharp.Core" Version="4.5.2" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
   </ItemGroup>
 
 </Project>

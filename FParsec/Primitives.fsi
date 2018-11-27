@@ -48,7 +48,7 @@ val (>>%): Parser<'a,'u> -> 'b -> Parser<'b,'u>
 val (>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'b,'u>
 
 /// The parser `p1 .>> p2` applies the parsers `p1` and `p2` in sequence and returns the result of `p1`.
-val (.>>): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'a,'u>
+val inline (.>>): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'a,'u>
 
 /// The parser `p1 .>>. p2` applies the parsers `p1` and `p2` in sequence and returns the results in a tuple.
 val (.>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<('a * 'b),'u>

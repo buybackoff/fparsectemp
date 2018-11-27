@@ -77,7 +77,7 @@ let internal createStaticIntIndicatorFunctionImpl<'TInt when 'TInt : struct>
     ilg.Emit(OpCodes.Ldloc_0)
     ilg.Emit(OpCodes.Ret)
 
-    let t = tb.CreateType()
+    let t = tb.CreateTypeInfo()
     let indicator = FormatterServices.GetUninitializedObject(t) :?> ('TInt -> bool)
 
 #if DEBUG_STATIC_MAPPING
@@ -245,7 +245,7 @@ let internal createStaticIntMappingImpl
                 ilg.Emit(OpCodes.Ldelem, T)
             ilg.Emit(OpCodes.Ret)
 
-            let t = tb.CreateType()
+            let t = tb.CreateTypeInfo()
             let mapping = FormatterServices.GetUninitializedObject(t) :?> (int -> 'T)
             if not isPrimitive then
                 // we can't use the previously used Fieldbuilders here, because SetValue is not implemented in FieldBuilders
@@ -790,7 +790,7 @@ let createStaticStringMapping (defaultValue: 'T) (keyValues: #seq<string*'T>) : 
         ilg.Emit(OpCodes.Ret)
 
         // compile type
-        let t = tb.CreateType()
+        let t = tb.CreateTypeInfo()
         // instantiate type
         let mapping = FormatterServices.GetUninitializedObject(t) :?> (string -> 'T)
         if not isPrimitive then

@@ -36,22 +36,6 @@
     <TargetFrameworks Condition="'$(OutputType)' == 'Exe' and '$(CoreOnNonWin)' == 'false'">$(TargetFrameworks);net45</TargetFrameworks>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net40-client'">
-    <TargetFrameworkIdentifier>.NETFramework</TargetFrameworkIdentifier>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'portable-net45+win8+wp8+wpa81'">
-    <TargetFrameworkIdentifier>.NETPortable</TargetFrameworkIdentifier>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <TargetFrameworkProfile>Profile259</TargetFrameworkProfile>
-    <NugetTargetMoniker>.NETPortable,Version=v0.0,Profile=Profile259</NugetTargetMoniker>
-    <TargetProfile>netcore</TargetProfile>
-    <TargetFSharpCoreVersion>3.259.4.0</TargetFSharpCoreVersion>
-    <!-- https://github.com/NuGet/Home/issues/5021 -->
-    <IncludeProjectPriFile>false</IncludeProjectPriFile>
-  </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFrameworkIdentifier)' == ''">
     <TargetFrameworkIdentifier Condition="'$(TargetFramework)' == 'net45'">.NETFramework</TargetFrameworkIdentifier>
