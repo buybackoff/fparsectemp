@@ -14,13 +14,14 @@ open Primitives
 // ========================
 
 /// Values of this type are returned by the runParser functions (not by `Parser<_,_>` functions).
+[<Struct>]
 type ParserResult<'Result,'UserState> =
      /// Success(result, userState, endPos) holds the result and the user state returned by a successful parser,
      /// together with the position where the parser stopped.
-     | Success of 'Result * 'UserState * Position
+     | Success of success: struct ('Result * 'UserState * Position)
      /// Failure(errorAsString, error, suserState) holds the parser error and the user state returned by a failing parser,
      /// together with a string representation of the parser error.
-     | Failure of string * ParserError * 'UserState
+     | Failure of failure: struct (string * ParserError * 'UserState)
 
 /// `runParserOnString p ustate streamName str` runs the parser `p` directly on the content of the string `str`,
 /// starting with the initial user state `ustate`. The `streamName` is used in error messages to describe
@@ -535,6 +536,8 @@ type NumberLiteralOptions =
 /// except if the `NumberLiteralOptions` passed to the `numberLiteral` parser have the
 /// `IncludeSuffixCharsInString` flag set.
 /// Any parsed suffix chars are always available through the `SuffixChar1` - `4` members.
+[<Struct>]
+[<CustomEquality;NoComparison>]
 type NumberLiteral =
     new: string:string * info:NumberLiteralResultFlags
          * suffixChar0: char * suffixChar1: char * suffixChar2: char * suffixChar3: char -> NumberLiteral

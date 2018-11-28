@@ -1,11 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AssemblyName>FParsec</AssemblyName>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Tailcalls>false</Tailcalls>
     <OtherFlags>/nooptimizationdata</OtherFlags>
-    <DefineConstants>LOW_TRUST;AGGRESSIVE_INLINING</DefineConstants>
+    <DefineConstants>AGGRESSIVE_INLINING;LOW_TRUST</DefineConstants>
   </PropertyGroup>
   
   <ItemGroup>
@@ -27,4 +27,11 @@
     <ProjectReference Include="..\FParsecCS\FParsecCS-NETCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="4.5.2" />
+    <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.3.0" />
+  </ItemGroup>
+  
 </Project>

@@ -217,7 +217,7 @@ let internal printErrorPosition (tabSize: int) (lw: LineWrapper) (stream: CharSt
 
 [<Sealed>]
 type ParserError(position: Position, userState: obj, messages: ErrorMessageList) =
-    do if isNull position then nullArg "pos"
+    do if position.Equals(Unchecked.defaultof<_>) then nullArg "pos"
 
     let defaultColumnWidth = 79
     let defaultIndentation = ""

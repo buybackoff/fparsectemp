@@ -5,7 +5,7 @@ using System;
 
 namespace FParsec {
 
-public sealed class Position : IEquatable<Position>, IComparable, IComparable<Position> {
+public struct Position : IEquatable<Position>, IComparable, IComparable<Position> {
     public long   Index      { get; private set; }
     public long   Line       { get; private set; }
     public long   Column     { get; private set; }
@@ -21,8 +21,9 @@ public sealed class Position : IEquatable<Position>, IComparable, IComparable<Po
     }
 
     public override bool Equals(object obj) {
-        return Equals(obj as Position);
-    }
+        if (ReferenceEquals(null, obj)) return false;
+        return obj is Position other && Equals(other);
+        }
     public bool Equals(Position other) {
         return    (object)this == (object)other
                || (   (object)other != null
@@ -57,8 +58,7 @@ public sealed class Position : IEquatable<Position>, IComparable, IComparable<Po
         return Index.CompareTo(other.Index);
     }
     int IComparable.CompareTo(object value) {
-        Position position = value as Position;
-        if ((object)position != null) return CompareTo(position);
+        if (value is Position other) return CompareTo(other);
         if (value == null) return 1;
         throw new ArgumentException("Object must be of type Position.");
     }

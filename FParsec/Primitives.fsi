@@ -51,7 +51,7 @@ val (>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'b,'u>
 val (.>>): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'a,'u>
 
 /// The parser `p1 .>>. p2` applies the parsers `p1` and `p2` in sequence and returns the results in a tuple.
-val (.>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<('a * 'b),'u>
+val inline (.>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<struct ('a * 'b),'u>
 
 /// The parser `between popen pclose p` applies the parsers `pOpen`, `p` and `pEnd` in sequence.
 /// It returns the result of `p`.
@@ -132,7 +132,7 @@ val (.>>?): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'a,'u>
 /// The parser `p1 .>>.? p2` behaves like `p1 .>>. p2`, except that it will backtrack
 /// to the beginning if `p2` fails with a non-fatal error and without changing the parser state,
 /// even if `p1` has changed the parser state.
-val (.>>.?): Parser<'a,'u> -> Parser<'b,'u> -> Parser<('a * 'b),'u>
+val (.>>.?): Parser<'a,'u> -> Parser<'b,'u> -> Parser<struct ('a * 'b),'u>
 
 // -------------------------------------
 // Conditional parsing and looking ahead
@@ -201,19 +201,19 @@ val failFatally: string -> Parser<'a,'u>
 /// The parser `tuple2 p1 p2` applies the parsers `p1` and `p2` in sequence and
 /// returns the results in a tuple.
 /// `tuple2 p1 p2` is defined as `p1 .>>. p2`.
-val tuple2: Parser<'a,'u> -> Parser<'b,'u> -> Parser<('a * 'b),'u>
+val tuple2: Parser<'a,'u> -> Parser<'b,'u> -> Parser<struct ('a * 'b),'u>
 
 /// The parser `tuple3 p1 p2 p3` applies the parsers `p1`, `p2` and `p3` in sequence and
 /// returns the results in a tuple.
-val tuple3: Parser<'a,'u> -> Parser<'b,'u> -> Parser<'c,'u> -> Parser<('a * 'b * 'c),'u>
+val tuple3: Parser<'a,'u> -> Parser<'b,'u> -> Parser<'c,'u> -> Parser<struct ('a * 'b * 'c),'u>
 
 /// The parser `tuple4 p1 p2 p3 p4` applies the parsers `p1`, `p2`, `p3` and `p4` in sequence and
 /// returns the results in a tuple.
-val tuple4: Parser<'a,'u> -> Parser<'b,'u> -> Parser<'c,'u> -> Parser<'d,'u>  -> Parser<('a * 'b * 'c * 'd),'u>
+val tuple4: Parser<'a,'u> -> Parser<'b,'u> -> Parser<'c,'u> -> Parser<'d,'u>  -> Parser<struct ('a * 'b * 'c * 'd),'u>
 
 /// The parser `tuple5 p1 p2 p3 p4 p5` applies the parsers `p1`, `p2`, `p3`, `p4` and `p5` in sequence and
 /// returns the results in a tuple.
-val tuple5: Parser<'a,'u> -> Parser<'b,'u> -> Parser<'c,'u> -> Parser<'d,'u> -> Parser<'e,'u>  -> Parser<('a * 'b * 'c * 'd * 'e),'u>
+val tuple5: Parser<'a,'u> -> Parser<'b,'u> -> Parser<'c,'u> -> Parser<'d,'u> -> Parser<'e,'u>  -> Parser<struct ('a * 'b * 'c * 'd * 'e),'u>
 
 
 // p{n}

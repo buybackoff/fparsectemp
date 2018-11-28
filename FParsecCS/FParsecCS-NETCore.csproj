@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <AssemblyName>FParsecCS</AssemblyName>
@@ -7,8 +7,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>1591</NoWarn>
-    <DefineConstants>LOW_TRUST;AGGRESSIVE_INLINING</DefineConstants>
+    <DefineConstants>AGGRESSIVE_INLINING;LOW_TRUST</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
 
   <ItemGroup>
     <Compile Include="Properties\*.cs" />
@@ -16,8 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="4.*" />
-    <PackageReference Include="System.Globalization.Extensions" Version="4.*" />
+    <PackageReference Include="FSharp.Core" Version="4.5.2" />
+    <PackageReference Include="System.Globalization.Extensions" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
   </ItemGroup>
 
 </Project>

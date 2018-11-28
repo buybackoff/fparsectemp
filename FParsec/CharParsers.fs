@@ -8,6 +8,7 @@ open System.Diagnostics
 open System.Text
 open System.Text.RegularExpressions
 open System.Runtime.CompilerServices // for MethodImplAttribute
+open System.Runtime.InteropServices
 
 #if LOW_TRUST
 #else
@@ -42,26 +43,27 @@ let float32OfHexString = HexFloat.SingleFromHexString
 // Running parsers on input
 // ========================
 
+[<Struct>]
 [<StructuredFormatDisplay("{StructuredFormatDisplay}")>]
 type ParserResult<'Result,'UserState> =
-     | Success of 'Result * 'UserState * Position
-     | Failure of string * ParserError * 'UserState
+     | Success of success: struct ('Result * 'UserState * Position)
+     | Failure of failure: struct (string * ParserError * 'UserState)
      with
         member private t.StructuredFormatDisplay =
             match t with
-            | Success(r,_,_) ->
+            | Success(struct (r,_,_)) ->
                 if typeof<'Result> = typeof<unit> then "Success: ()"
                 else sprintf "Success: %A" r
-            | Failure(msg,_,_) ->
+            | Failure(struct (msg,_,_)) ->
                 sprintf "Failure:\n%s" msg
 
 let internal applyParser (parser: Parser<'Result,'UserState>) (stream: CharStream<'UserState>) =
     let reply = parser stream
     if reply.Status = Ok then
-        Success(reply.Result, stream.UserState, stream.Position)
+        Success(struct (reply.Result, stream.UserState, stream.Position))
     else
         let error = ParserError(stream.Position, stream.UserState, reply.Error)
-        Failure(error.ToString(stream), error, stream.UserState)
+        Failure(struct (error.ToString(stream), error, stream.UserState))
 
 let runParserOnString (parser: Parser<'Result,'UserState>) (ustate: 'UserState) (streamName: string) (chars: string) =
     CharStream.ParseString(chars, 0, chars.Length, applyParser parser, ustate, streamName)
@@ -975,29 +977,32 @@ type NumberLiteralResultFlags =
 
 type internal NLF = NumberLiteralResultFlags
 
-type NumberLiteral(string, info, suffixChar1, suffixChar2, suffixChar3, suffixChar4) =
-    member t.String = string
+[<Struct;StructLayout(LayoutKind.Sequential, Pack = 2)>]
+[<CustomEquality;NoComparison>]
+type NumberLiteral(string: string, info: NumberLiteralResultFlags, suffixChar1: char, suffixChar2: char, suffixChar3: char, suffixChar4: char) =
+    
+    member t.String with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string
 
-    member t.SuffixLength = int (info &&& NLF.SuffixLengthMask)
-    member t.SuffixChar1  = suffixChar1
-    member t.SuffixChar2  = suffixChar2
-    member t.SuffixChar3  = suffixChar3
-    member t.SuffixChar4  = suffixChar4
+    member t.SuffixLength with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.SuffixLengthMask)
+    member t.SuffixChar1 with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = suffixChar1
+    member t.SuffixChar2 with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = suffixChar2
+    member t.SuffixChar3 with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = suffixChar3
+    member t.SuffixChar4 with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = suffixChar4
 
-    member t.Info = info
+    member t.Info with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = info
 
-    member t.HasMinusSign   = int (info &&& NLF.HasMinusSign) <> 0
-    member t.HasPlusSign    = int (info &&& NLF.HasPlusSign) <> 0
-    member t.HasIntegerPart = int (info &&& NLF.HasIntegerPart) <> 0
-    member t.HasFraction    = int (info &&& NLF.HasFraction) <> 0
-    member t.HasExponent    = int (info &&& NLF.HasExponent) <> 0
-    member t.IsInteger      = int (info &&& (NLF.HasFraction ||| NLF.HasExponent)) = 0 // HasIntegerPart must be set if HasFraction and HasExponent both aren't
-    member t.IsDecimal      = int (info &&& NLF.IsDecimal) <> 0
-    member t.IsHexadecimal  = int (info &&& NLF.IsHexadecimal) <> 0
-    member t.IsBinary       = int (info &&& NLF.IsBinary) <> 0
-    member t.IsOctal        = int (info &&& NLF.IsOctal) <> 0
-    member t.IsNaN          = int (info &&& NLF.IsNaN) <> 0
-    member t.IsInfinity     = int (info &&& NLF.IsInfinity) <> 0
+    member t.HasMinusSign   with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.HasMinusSign) <> 0
+    member t.HasPlusSign    with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.HasPlusSign) <> 0
+    member t.HasIntegerPart with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.HasIntegerPart) <> 0
+    member t.HasFraction    with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.HasFraction) <> 0
+    member t.HasExponent    with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.HasExponent) <> 0
+    member t.IsInteger      with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& (NLF.HasFraction ||| NLF.HasExponent)) = 0 // HasIntegerPart must be set if HasFraction and HasExponent both aren't
+    member t.IsDecimal      with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.IsDecimal) <> 0
+    member t.IsHexadecimal  with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.IsHexadecimal) <> 0
+    member t.IsBinary       with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.IsBinary) <> 0
+    member t.IsOctal        with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.IsOctal) <> 0
+    member t.IsNaN          with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.IsNaN) <> 0
+    member t.IsInfinity     with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.IsInfinity) <> 0
 
     override t.Equals(other: obj) =
         match other with

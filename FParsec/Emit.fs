@@ -32,7 +32,7 @@ let createTypeBuilder name args parent (interfaces : System.Type[]) =
                         #else
                             AssemblyBuilderAccess.Run
                         #endif
-            assemblyBuilder <- System.Threading.Thread.GetDomain().DefineDynamicAssembly(assemblyName, access)
+            assemblyBuilder <- AssemblyBuilder.DefineDynamicAssembly(assemblyName, access)
             moduleBuilder <- assemblyBuilder.DefineDynamicModule("FParsec.Emitted"
                                                                  #if DEBUG
                                                                      , "FParsec.Emitted.dll"

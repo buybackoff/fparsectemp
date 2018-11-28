@@ -100,19 +100,20 @@ let (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
         reply1
 
 
-let (.>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
-    fun stream ->
+let inline (.>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
+    let inline f stream =
         let reply1 = p stream
         if reply1.Status = Ok then
             let stateTag1 = stream.StateTag
             let reply2 = q stream
             let error = if stateTag1 <> stream.StateTag then reply2.Error
                         else mergeErrors reply1.Error reply2.Error
-            let result = if reply2.Status = Ok then (reply1.Result, reply2.Result)
+            let result = if reply2.Status = Ok then struct (reply1.Result, reply2.Result)
                          else Unchecked.defaultof<_>
             Reply(reply2.Status, result, error)
         else
             Reply(reply1.Status, reply1.Error)
+    f
 
 let between (popen: Parser<_,'u>) (pclose: Parser<_,'u>) (p: Parser<_,'u>) =
     fun stream ->
@@ -456,7 +457,7 @@ let (>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'b,'u> =
         else
             Reply(reply1.Status, reply1.Error)
 
-let (.>>.?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'a*'b,'u> =
+let (.>>.?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<struct('a*'b),'u> =
     fun stream ->
         // state is only declared mutable so it can be passed by ref, it won't be mutated
         let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
@@ -471,7 +472,7 @@ let (.>>.?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'a*'b,'u> =
                 else
                     reply2.Error <- nestedError stream error
                     stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
-            let result = if reply2.Status = Ok then (reply1.Result, reply2.Result)
+            let result = if reply2.Status = Ok then struct (reply1.Result, reply2.Result)
                          else Unchecked.defaultof<_>
             Reply(reply2.Status, result, reply2.Error)
         else
@@ -612,9 +613,9 @@ let failFatally msg : Parser<'a,'u> =
 // -----------------
 
 let tuple2 p1 p2          = p1 .>>. p2
-let tuple3 p1 p2 p3       = pipe3 p1 p2 p3       (fun a b c     -> (a, b, c))
-let tuple4 p1 p2 p3 p4    = pipe4 p1 p2 p3 p4    (fun a b c d   -> (a, b, c, d))
-let tuple5 p1 p2 p3 p4 p5 = pipe5 p1 p2 p3 p4 p5 (fun a b c d e -> (a, b, c, d, e))
+let tuple3 p1 p2 p3       = pipe3 p1 p2 p3       (fun a b c     -> struct (a, b, c))
+let tuple4 p1 p2 p3 p4    = pipe4 p1 p2 p3 p4    (fun a b c d   -> struct (a, b, c, d))
+let tuple5 p1 p2 p3 p4 p5 = pipe5 p1 p2 p3 p4 p5 (fun a b c d e -> struct (a, b, c, d, e))
 
 let parray n (p: Parser<'a,'u>) =
     if n = 0 then preturn [||]
@@ -940,7 +941,7 @@ let parse = ParserCombinator()
 // ----------------------
 // Other helper functions
 // ----------------------
-
+[<System.Obsolete("Use manual mutable variable, which reduces allocations")>]
 let createParserForwardedToRef() =
     let dummyParser = fun stream -> failwith "a parser created with createParserForwardedToRef was not initialized"
     let r = ref dummyParser

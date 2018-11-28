@@ -12,26 +12,33 @@ public enum ReplyStatus {
 }
 
 [System.Diagnostics.DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
-public struct Reply<TResult> : IEquatable<Reply<TResult>> {
-    public ErrorMessageList Error;
+public struct Reply<TResult> : IEquatable<Reply<TResult>>
+{
+    private ErrorMessageList _materializedError;
+    public ErrorMessageList Error
+    {
+        get => _materializedError;
+        set => _materializedError = value;
+    }
+
     public TResult     Result;
     public ReplyStatus Status;
 
     public Reply(TResult result) {
         Result = result;
-        Error = null;
+        _materializedError = null;
         Status = ReplyStatus.Ok;
     }
 
     public Reply(ReplyStatus status, ErrorMessageList error) {
         Status = status;
-        Error = error;
+        _materializedError = error;
         Result = default(TResult);
     }
 
     public Reply(ReplyStatus status, TResult result, ErrorMessageList error) {
         Status = status;
-        Error = error;
+        _materializedError = error;
         Result = result;
     }
 
