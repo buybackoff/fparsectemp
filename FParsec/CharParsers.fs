@@ -977,7 +977,7 @@ type NumberLiteralResultFlags =
 
 type internal NLF = NumberLiteralResultFlags
 
-[<Struct;StructLayout(LayoutKind.Sequential, Pack = 2)>]
+[<Struct;StructLayout(LayoutKind.Sequential, Pack = 1)>]
 [<CustomEquality;NoComparison>]
 type NumberLiteral(string: string, info: NumberLiteralResultFlags, suffixChar1: char, suffixChar2: char, suffixChar3: char, suffixChar4: char) =
     

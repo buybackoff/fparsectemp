@@ -24,7 +24,8 @@ let main(args: string[]) =
       // if args.Length <> 1 then
       let mutable x = Unchecked.defaultof<_>
       for i in 1L..count do
-        x <- parseJsonString "{\"a\": 123, \"b\": true}" // , \"c\": null, \"d\": {\"nested\":\"asd\"} }"
+        x <- Calculator.calculate " ( ( exp 0 + (6 / ( 1 +2 ) )- 123456 )/ 2+123 + 877) * 3^2 / 3"
+        ///x <- parseJsonString "{\"a\": 123, \"b\": true}" //, \"c\": null, \"d\": {\"nested\":\"asd\"} }"
         // list.Add(x)
       x
       //else 

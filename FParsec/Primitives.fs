@@ -275,6 +275,23 @@ let (<|>) (p1: Parser<'a,'u>) (p2: Parser<'a,'u>) : Parser<'a,'u> =
                 reply.Error <- mergeErrors reply.Error error
         reply
 
+let choice2 (ps: 't when 't :> seq<Parser<'a,'u>>)  =
+    fun (stream:CharStream<'u>) ->
+      use iter = ps.GetEnumerator()
+      if iter.MoveNext() then
+          let stateTag = stream.StateTag
+          let mutable error = NoErrorMessages
+          let mutable reply = iter.Current stream
+          while reply.Status = Error && stateTag = stream.StateTag && iter.MoveNext() do
+              error <- mergeErrors error reply.Error
+              reply <- iter.Current stream
+          if stateTag = stream.StateTag then
+              error <- mergeErrors error reply.Error
+              reply.Error <- error
+          reply
+      else
+          Reply()
+
 let choice (ps: seq<Parser<'a,'u>>)  =
     match ps with
     | :? (Parser<'a,'u>[]) as ps ->

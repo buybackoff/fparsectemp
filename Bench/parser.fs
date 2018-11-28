@@ -74,13 +74,13 @@ let keyValue = tuple2 stringLiteral (ws >>. str ":" >>. ws >>. jvalue)
 let jlist   = listBetweenStrings "[" "]" jvalue JList
 let jobject = listBetweenStrings "{" "}" keyValue JObject
 
-jvalueRef <-    choice [jobject
+jvalueRef <-  choice [  jobject
                         jlist
                         jstring
                         jnumber
                         jtrue
                         jfalse
-                        jnull]
+                        jnull ]
 
 let json = ws >>. jvalue .>> ws .>> eof
 

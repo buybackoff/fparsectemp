@@ -471,6 +471,7 @@ namespace FParsec
             ++StateTag;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string ReadFrom(CharStreamIndexToken indexToken)
         {
             int idx = indexToken.Idx;
@@ -481,6 +482,7 @@ namespace FParsec
             return ReadFrom(idx);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal string ReadFrom(int idx0)
         {
             if (idx0 >= 0)
@@ -496,7 +498,48 @@ namespace FParsec
                 Debug.Assert(idx0 == Int32.MinValue);
                 if (Idx < 0) return "";
             }
-            throw new ArgumentException("The current position of the stream must not lie before the position corresponding to the given CharStreamIndexToken/CharStreamState.");
+
+            ThrowBadPositionReadFromSlice();
+            return null;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowBadPositionReadFromSlice()
+        {
+            throw new ArgumentException(
+                "The current position of the stream must not lie before the position corresponding to the given CharStreamIndexToken/CharStreamState.");
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ReadOnlyMemory<char> Slice(CharStreamIndexToken indexToken)
+        {
+            int idx = indexToken.Idx;
+            if (idx == -1) ThrowInvalidIndexToken(); // tests for zero-initialized IndexTokens
+#if DEBUG
+            Debug.Assert(this == indexToken.CharStream);
+#endif
+            return Slice(idx);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ReadOnlyMemory<char> Slice(int idx0)
+        {
+            if (idx0 >= 0)
+            {
+                Debug.Assert(idx0 >= IndexBegin && idx0 < IndexEnd);
+                if (idx0 <= Idx)
+                    return String.AsMemory(idx0, Idx - idx0);
+                if (Idx < 0)
+                    return String.AsMemory(idx0, IndexEnd - idx0);
+            }
+            else
+            {
+                Debug.Assert(idx0 == Int32.MinValue);
+                if (Idx < 0) return "".AsMemory();
+            }
+            ThrowBadPositionReadFromSlice();
+            return null;
         }
 
         public void RegisterNewline()
@@ -885,6 +928,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Skip(string chars)
         {
             int newIdx = unchecked(Idx + chars.Length);
@@ -902,6 +946,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MatchCaseFolded(string caseFoldedChars)
         {
             if (unchecked((uint)Idx) + (uint)caseFoldedChars.Length <= (uint)IndexEnd)
