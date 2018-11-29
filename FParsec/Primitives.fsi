@@ -17,7 +17,7 @@ open FParsec.Error
 [<Literal>] val FatalError: ReplyStatus = ReplyStatus.FatalError;;
 
 /// The type of the parser functions supported by FParsec combinators.
-type Parser<'Result, 'UserState> = ParserX<'Result, 'UserState>
+// type Parser<'Result, 'UserState> = Parser<'Result, 'UserState>
 
 // =================================
 // Parser primitives and combinators

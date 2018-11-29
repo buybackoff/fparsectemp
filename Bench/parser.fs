@@ -74,13 +74,13 @@ let keyValue:Parser<struct (string *Json),unit> = tuple2 stringLiteral (ws >>. s
 let jlist   = listBetweenStrings "[" "]" jvalue JList
 let jobject = listBetweenStrings "{" "}" keyValue JObject
 
-do jvalueRef :=  choice [   jobject
+do jvalueRef :=  choice [|  jobject
                             jlist
                             jstring
                             jnumber
                             jtrue
                             jfalse
-                            jnull ]
+                            jnull |]
 
 let json = ws >>. jvalue .>> ws .>> eof
 

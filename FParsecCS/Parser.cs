@@ -4,12 +4,12 @@ using System.Runtime.CompilerServices;
 
 namespace FParsec
 {
-    //public interface IParser<TResult, TUserState>
-    //{
-    //    Reply<TResult> Parse(CharStream<TUserState> charStream);
-    //}
+    public interface IParser<TResult, TUserState>
+    {
+        Reply<TResult> Parse(CharStream<TUserState> charStream);
+    }
 
-    public abstract class ParserX<TResult, TUserState>
+    public abstract class Parser<TResult, TUserState>
     {
         protected abstract Reply<TResult> InvokeImpl(CharStream<TUserState> charStream);
 
@@ -24,12 +24,6 @@ namespace FParsec
                 return CalliHelper.InvokeFast<Reply<TResult>, CharStream<TUserState>>(this, charStream, _parseMethodPtr);
             }
 
-            return ReplyX(charStream);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private Reply<TResult> ReplyX(CharStream<TUserState> charStream)
-        {
             return InvokeImpl(charStream);
         }
 
@@ -37,6 +31,36 @@ namespace FParsec
         internal Reply<TResult> InvokeFast(CharStream<TUserState> charStream)
         {
             return CalliHelper.InvokeFast<Reply<TResult>, CharStream<TUserState>>(this, charStream, _parseMethodPtr);
+        }
+    }
+
+    public sealed class Parser<TResult, TUserState, TImpl> : Parser<TResult, TUserState>
+        where TImpl : IParser<TResult, TUserState>
+    {
+        private readonly TImpl _impl;
+
+        public Parser(TImpl impl)
+        {
+            _impl = impl;
+            _parseMethodPtr = CalliHelper.Ldvirtftn<TResult, TUserState, TImpl>();
+            HasParseMethodPtr = true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Reply<TResult> Parse(Parser<TResult, TUserState, TImpl> th, CharStream<TUserState> stream)
+        {
+            return th.Parse(stream);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> Parse(CharStream<TUserState> stream)
+        {
+            return _impl.Parse(stream);
+        }
+
+        protected override Reply<TResult> InvokeImpl(CharStream<TUserState> charStream)
+        {
+            return _impl.Parse(charStream);
         }
     }
 
@@ -61,13 +85,14 @@ namespace FParsec
         }
     }
 
-    internal sealed class TakeLeftParser<TLeft, TRight, TUserState> : ParserX<TLeft, TUserState> //, IParser<TLeft, TUserState>
+    internal sealed class TakeLeftParser<TLeft, TRight, TUserState>
+        : Parser<TLeft, TUserState>, IParser<TLeft, TUserState>
     {
-        private readonly ParserX<TLeft, TUserState> _l;
-        private readonly ParserX<TRight, TUserState> _r;
+        private readonly Parser<TLeft, TUserState> _l;
+        private readonly Parser<TRight, TUserState> _r;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TakeLeftParser(ParserX<TLeft, TUserState> l, ParserX<TRight, TUserState> r)
+        public TakeLeftParser(Parser<TLeft, TUserState> l, Parser<TRight, TUserState> r)
         {
             _l = l;
             _r = r;
@@ -88,7 +113,7 @@ namespace FParsec
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal Reply<TLeft> Parse(CharStream<TUserState> stream)
+        public Reply<TLeft> Parse(CharStream<TUserState> stream)
         {
             var reply1 = _l.HasParseMethodPtr ? _l.InvokeFast(stream) : _l.Invoke(stream);
 
@@ -125,13 +150,14 @@ namespace FParsec
         }
     }
 
-    internal sealed class TakeRightParser<TLeft, TRight, TUserState> : ParserX<TRight, TUserState> //, IParser<TRight, TUserState>
+    internal sealed class TakeRightParser<TLeft, TRight, TUserState>
+        : Parser<TRight, TUserState>, IParser<TRight, TUserState>
     {
-        private readonly ParserX<TLeft, TUserState> _l;
-        private readonly ParserX<TRight, TUserState> _r;
+        private readonly Parser<TLeft, TUserState> _l;
+        private readonly Parser<TRight, TUserState> _r;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TakeRightParser(ParserX<TLeft, TUserState> l, ParserX<TRight, TUserState> r)
+        public TakeRightParser(Parser<TLeft, TUserState> l, Parser<TRight, TUserState> r)
         {
             _l = l;
             _r = r;
@@ -192,7 +218,7 @@ namespace FParsec
         }
     }
 
-    internal sealed class SpacesParser<TUserState> : ParserX<Unit, TUserState> //, IParser<Unit, TUserState>
+    internal sealed class SpacesParser<TUserState> : Parser<Unit, TUserState>, IParser<Unit, TUserState>
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SpacesParser()
@@ -220,12 +246,92 @@ namespace FParsec
             stream.SkipWhitespace();
             return new Reply<Unit>(default(Unit));
         }
+    }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //internal Reply<T> Parse<T>(CharStream<TUserState> stream)
-        //{
-        //    stream.SkipWhitespace();
-        //    return new Reply<T>(default);
-        //}
+    [Sealed]
+    internal sealed class PChoiceArr<a, u> : IParser<a, u>
+    {
+        private Parser<a, u>[] _ps;
+
+        public PChoiceArr(Parser<a, u>[] ps)
+        {
+            _ps = ps;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<a> Parse(CharStream<u> stream)
+        {
+            var stateTag = stream.StateTag;
+            ErrorMessageList error = null;
+            var p = _ps[0];
+            var reply = p.HasParseMethodPtr ? p.InvokeFast(stream) : p.Invoke(stream);
+            var i = 1;
+            while (reply.Status == ReplyStatus.Error && stateTag == stream.StateTag && i < _ps.Length)
+            {
+                error = ErrorMessageList.Merge(error, reply.Error);
+                p = _ps[i];
+                reply = p.HasParseMethodPtr ? p.InvokeFast(stream) : p.Invoke(stream);
+                i++;
+            }
+            if (stateTag == stream.StateTag)
+            {
+                error = ErrorMessageList.Merge(error, reply.Error);
+                reply.Error = error;
+            }
+            return reply;
+        }
+    }
+
+    [Sealed]
+    internal class PBarGreaterGreater<a, b, u> : IParser<b, u>
+    {
+        private readonly Parser<a, u> _p;
+        private readonly FSharpFunc<a, b> _f;
+
+        public PBarGreaterGreater(Parser<a, u> p, FSharpFunc<a, b> f)
+        {
+            _p = p;
+            _f = f;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<b> Parse(CharStream<u> stream)
+        {
+            Reply<a> reply = _p.HasParseMethodPtr ? _p.InvokeFast(stream) : _p.Invoke(stream);
+            return new Reply<b>(reply.Status, (reply.Status != ReplyStatus.Ok) ? default(b) : _f.Invoke(reply.Result), reply.Error);
+        }
+    }
+
+
+    [Sealed]
+    [Serializable]
+    internal sealed class PLessBarGreater<a, u> : IParser<a, u>
+    {
+        public PLessBarGreater(Parser<a, u> p1, Parser<a, u> p2) 
+        {
+            this.p1 = p1;
+            this.p2 = p2;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<a> Parse(CharStream<u> stream)
+        {
+            ulong stateTag = stream.StateTag;
+            Reply<a> reply = this.p1.Invoke(stream);
+            if (reply.Status == ReplyStatus.Error && stateTag == stream.StateTag)
+            {
+                ErrorMessageList error = reply.Error;
+                reply = this.p2.Invoke(stream);
+                if (stateTag == stream.StateTag)
+                {
+                    reply.Error = ErrorMessageList.Merge(reply.Error, error);
+                }
+            }
+            return reply;
+        }
+
+        internal Parser<a, u> p2;
+
+        internal Parser<a, u> p1;
     }
 }

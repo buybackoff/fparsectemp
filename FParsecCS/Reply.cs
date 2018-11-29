@@ -22,6 +22,7 @@ namespace FParsec
         public TResult Result;
         public ReplyStatus Status;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply(TResult result)
         {
             Result = result;
@@ -30,6 +31,7 @@ namespace FParsec
             Status = ReplyStatus.Ok;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply(ReplyStatus status, ErrorMessageList error)
         {
             Status = status;
@@ -38,6 +40,7 @@ namespace FParsec
             Result = default(TResult);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply(ReplyStatus status, TResult result, ErrorMessageList error)
         {
             Status = status;
@@ -52,6 +55,7 @@ namespace FParsec
             return Equals((Reply<TResult>)other);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(Reply<TResult> other)
         {
             return Status == other.Status
@@ -65,11 +69,13 @@ namespace FParsec
                    ^ (Status != ReplyStatus.Ok ? 0 : FastGenericEqualityERComparer<TResult>.Instance.GetHashCode(Result));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator ==(Reply<TResult> r1, Reply<TResult> r2)
         {
             return r1.Equals(r2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator !=(Reply<TResult> r1, Reply<TResult> r2)
         {
             return !r1.Equals(r2);

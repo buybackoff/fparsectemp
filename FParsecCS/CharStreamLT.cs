@@ -474,7 +474,7 @@ namespace FParsec
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         public CharStreamIndexToken IndexToken
         {
-            [MethodImpl(MethodImplOptions.NoInlining)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return new CharStreamIndexToken(

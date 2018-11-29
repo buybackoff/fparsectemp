@@ -10,13 +10,10 @@
 	}
 
 	.method public hidebysig static 
-		native int Ldvirtftn<TResult, TUserState, TParser> (
-		!!TParser parser
-	) cil managed aggressiveinlining
+		native int Ldvirtftn<TResult, TUserState, (class FParsec.IParser`2<!!TResult, !!TUserState>) TParser> () cil managed aggressiveinlining
 	{
-		.maxstack 2
-		ldarg.0
-		ldvirtftn	valuetype FParsec.Reply`1<!0> !!TParser::Parse(class FParsec.CharStream`1<!1>)
+		.maxstack 1
+		ldftn	valuetype FParsec.Reply`1<!0> class FParsec.Parser`3<!!TResult, !!TUserState, !!TParser>::Parse(class FParsec.Parser`3<!0, !1, !2>, class FParsec.CharStream`1<!1>)
 		ret
 	}
 
@@ -33,6 +30,14 @@
 	{
 		.maxstack 1
 		ldftn	valuetype FParsec.Reply`1<!1> class FParsec.TakeRightParser`3<!!TLeft, !!TRight, !!TUserState>::Parse(object, class FParsec.CharStream`1<!2>)
+		ret
+	}
+
+	.method public hidebysig static 
+	native int LdvirtftnOPP<TTerm, TAfterString, TUserState> () cil managed aggressiveinlining
+	{
+		.maxstack 1
+		ldftn	valuetype FParsec.Reply`1<!0> class FParsec.OperatorPrecedenceParser`3<!!TTerm, !!TAfterString, !!TUserState>::Parse(object, class FParsec.CharStream`1<!2>)
 		ret
 	}
 
