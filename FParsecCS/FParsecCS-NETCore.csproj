@@ -9,6 +9,7 @@
     <NoWarn>1591</NoWarn>
     <DefineConstants>AGGRESSIVE_INLINING;LOW_TRUST</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>7.2</LangVersion>
   </PropertyGroup>
 
 
