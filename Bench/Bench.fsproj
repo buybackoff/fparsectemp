@@ -5,6 +5,12 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+  
   <ItemGroup>
     <Compile Include="Calculator.fs" />
     <Compile Include="ast.fs" />

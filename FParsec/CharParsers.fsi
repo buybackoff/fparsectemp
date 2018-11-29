@@ -539,9 +539,16 @@ type NumberLiteralOptions =
 [<Struct>]
 [<CustomEquality;NoComparison>]
 type NumberLiteral =
+    #if NETCOREAPP2_1
+    new: string:System.ReadOnlyMemory<char> * info:NumberLiteralResultFlags
+         * suffixChar0: char * suffixChar1: char * suffixChar2: char * suffixChar3: char -> NumberLiteral
+
+    #else
     new: string:string * info:NumberLiteralResultFlags
          * suffixChar0: char * suffixChar1: char * suffixChar2: char * suffixChar3: char -> NumberLiteral
 
+    #endif
+    
     /// The parsed number literal string. Only includes the parsed suffix chars if the
     /// `NumberLiteralOptions` passed to the `numberLiteral` parser have the `IncludeSuffixCharsInString` flag set.
     member String: string

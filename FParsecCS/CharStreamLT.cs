@@ -25,6 +25,7 @@ namespace FParsec
         /// <summary>Returns -1 if the IndexToken was zero-initialized.</summary>
         internal int Idx { get { return unchecked(IdxPlus1 - 1); } }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal CharStreamIndexToken(
 #if DEBUG
                                   CharStream charStream,
@@ -43,6 +44,7 @@ namespace FParsec
             throw new InvalidOperationException("The CharStreamIndexToken is invalid.");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long GetIndex(CharStream charStreamFromWhichIndexTokenWasRetrieved)
         {
             int idx = Idx;
@@ -58,24 +60,27 @@ namespace FParsec
     {
         private uint Chars;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal TwoChars(uint chars)
         {
             Chars = chars;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TwoChars(char char0, char char1)
         {
             Chars = ((uint)char1 << 16) | (uint)char0;
         }
 
-        public char Char0 { get { return unchecked((char)Chars); } }
-        public char Char1 { get { return (char)(Chars >> 16); } }
+        public char Char0 { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return unchecked((char)Chars); } }
+        public char Char1 { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return (char)(Chars >> 16); } }
 
         public override bool Equals(object obj)
         {
             return (obj is TwoChars) && Chars == ((TwoChars)obj).Chars;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(TwoChars other)
         {
             return Chars == other.Chars;
@@ -86,11 +91,13 @@ namespace FParsec
             return unchecked((int)Chars);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator ==(TwoChars left, TwoChars right)
         {
             return left.Chars == right.Chars;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator !=(TwoChars left, TwoChars right)
         {
             return left.Chars != right.Chars;
@@ -138,11 +145,12 @@ namespace FParsec
         /// <summary>IndexOfFirstChar - IndexBegin</summary>
         internal long StringToStreamIndexOffset;
 
-        public long IndexOfFirstChar { get { return (uint)IndexBegin + StringToStreamIndexOffset; } }
-        public long IndexOfLastCharPlus1 { get { return (uint)IndexEnd + StringToStreamIndexOffset; } }
+        public long IndexOfFirstChar { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return (uint)IndexBegin + StringToStreamIndexOffset; } }
+        public long IndexOfLastCharPlus1 { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return (uint)IndexEnd + StringToStreamIndexOffset; } }
 
         public long Index
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 // return GetIndex(Idx);
@@ -159,6 +167,7 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal long GetIndex(int idx)
         {
             if (idx >= 0)
@@ -177,6 +186,7 @@ namespace FParsec
         /// If the CharStream is empty, this property is always true.</summary>
         public bool IsBeginOfStream
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return Idx == IndexBegin || (Idx < 0 && IndexBegin == IndexEnd);
@@ -185,40 +195,45 @@ namespace FParsec
 
         /// <summary>Indicates whether the Iterator points to the end of the CharStream,
         /// i.e. whether it points to one char beyond the last char in the CharStream.</summary>
-        public bool IsEndOfStream { get { return Idx < 0; } }
+        public bool IsEndOfStream { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return Idx < 0; } }
 
         internal long _Line;
-        public long Line { get { return _Line; } }
+        public long Line { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return _Line; } }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetLine_WithoutCheckAndWithoutIncrementingTheStateTag(long line)
         {
             _Line = line;
         }
 
         internal long _LineBegin;
-        public long LineBegin { get { return _LineBegin; } }
+        public long LineBegin { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return _LineBegin; } }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetLineBegin_WithoutCheckAndWithoutIncrementingTheStateTag(long lineBegin)
         {
             _LineBegin = lineBegin;
         }
 
         /// <summary>The UTF‐16 column number of the next char, i.e. Index ‐ LineBegin  + 1.</summary>
-        public long Column { get { return Index - LineBegin + 1; } }
+        public long Column { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return Index - LineBegin + 1; } }
 
         internal string _Name;
 
         public string Name
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _Name; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { _Name = value; ++StateTag; }
         }
 
-        public Encoding Encoding { get; private set; }
+        public Encoding Encoding { [MethodImpl(MethodImplOptions.AggressiveInlining)]get; private set; }
 
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         public Position Position
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 long index = Index;
@@ -226,6 +241,7 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal CharStream(string chars)
         {
             Debug.Assert(chars != null);
@@ -412,6 +428,7 @@ namespace FParsec
         /// low trust CharStream instances, because the instances hold no resources that need to be disposed.</summary>
         public void Dispose() { }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "The CharStream is manually disposed.")]
         public static T ParseString<T, TUserState>(string chars, int index, int length,
                                                   FSharpFunc<CharStream<TUserState>, T> parser,
@@ -424,6 +441,7 @@ namespace FParsec
             return parser.Invoke(stream);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Seek(long index)
         {
             long idx = unchecked(index - StringToStreamIndexOffset);
@@ -433,15 +451,25 @@ namespace FParsec
                 ++StateTag;
                 return;
             }
+
             if (index < IndexOfFirstChar)
-                throw (new ArgumentOutOfRangeException("index", "The index is negative or less than the IndexOfFirstChar."));
+            {
+                ThrowIndexNegativeOrLTFirstChar();
+            }
             ++StateTag;
             Idx = Int32.MinValue;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowIndexNegativeOrLTFirstChar()
+        {
+            throw (new ArgumentOutOfRangeException("index", "The index is negative or less than the IndexOfFirstChar."));
         }
 
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         public CharStreamIndexToken IndexToken
         {
+            [MethodImpl(MethodImplOptions.NoInlining)]
             get
             {
                 return new CharStreamIndexToken(
@@ -459,6 +487,7 @@ namespace FParsec
             throw new ArgumentException("The CharStreamIndexToken is invalid.");
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public void Seek(CharStreamIndexToken indexToken)
         {
             int idx = indexToken.Idx;
@@ -510,7 +539,6 @@ namespace FParsec
                 "The current position of the stream must not lie before the position corresponding to the given CharStreamIndexToken/CharStreamState.");
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ReadOnlyMemory<char> Slice(CharStreamIndexToken indexToken)
         {
@@ -542,6 +570,7 @@ namespace FParsec
             return null;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RegisterNewline()
         {
             ++_Line;
@@ -551,6 +580,7 @@ namespace FParsec
             ++StateTag;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void RegisterNewLineBegin(int stringLineBegin, int lineOffset)
         {
             Debug.Assert(lineOffset > 0
@@ -563,6 +593,7 @@ namespace FParsec
             ++StateTag;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RegisterNewlines(int lineOffset, int newColumnMinus1)
         {
             _Line += lineOffset;
@@ -573,6 +604,7 @@ namespace FParsec
             ++StateTag;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RegisterNewlines(long lineOffset, long newColumnMinus1)
         {
             _Line += lineOffset;
@@ -583,6 +615,7 @@ namespace FParsec
             ++StateTag;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char Peek()
         {
             int idx = Idx;
@@ -605,6 +638,7 @@ namespace FParsec
                 ++StateTag;
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char Read()
         {
@@ -620,6 +654,7 @@ namespace FParsec
             }
             return EOS;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char SkipAndPeek()
         {
@@ -637,6 +672,7 @@ namespace FParsec
             }
             return EOS;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TwoChars Peek2()
         {
@@ -648,6 +684,7 @@ namespace FParsec
             else
                 return new TwoChars(EOS, EOS);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char Peek(uint utf16Offset)
         {
@@ -660,6 +697,7 @@ namespace FParsec
             }
             return EOS;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Skip(uint utf16Offset)
         {
@@ -677,6 +715,7 @@ namespace FParsec
             Idx = Int32.MinValue;
             return;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char SkipAndPeek(uint utf16Offset)
         {
@@ -694,6 +733,7 @@ namespace FParsec
             Idx = Int32.MinValue;
             return EOS;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char Peek(int utf16Offset)
         {
@@ -715,6 +755,7 @@ namespace FParsec
         EndOfStream:
             return EOS;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Skip(int utf16Offset)
         {
@@ -741,6 +782,7 @@ namespace FParsec
             idx = Int32.MinValue;
             goto Return;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Skip(long utf16Offset)
         {
@@ -756,6 +798,7 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char SkipAndPeek(int utf16Offset)
         {
             ++StateTag;
@@ -783,6 +826,7 @@ namespace FParsec
             return EOS;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string PeekString(int length)
         {
             if (length < 0) throw new ArgumentOutOfRangeException("length", "length is negative.");
@@ -793,6 +837,7 @@ namespace FParsec
                 return idx < 0 ? "" : String.Substring(idx, IndexEnd - idx);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string Read(int length)
         {
             if (length < 0) throw new ArgumentOutOfRangeException("length", "length is negative.");
@@ -811,22 +856,29 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int PeekString(char[] buffer, int bufferIndex, int length)
         {
             return Read(buffer, bufferIndex, length, true);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Read(char[] buffer, int bufferIndex, int length)
         {
             return Read(buffer, bufferIndex, length, false);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int Read(char[] buffer, int bufferIndex, int length, bool backtrack)
         {
             if (bufferIndex < 0)
-                throw new ArgumentOutOfRangeException("bufferIndex", "bufferIndex is negative.");
+            {
+                ThrowNegativeBufferIndex();
+            }
             if (length < 0 || bufferIndex > buffer.Length - length)
-                throw new ArgumentOutOfRangeException("length", "bufferIndex or length is out of range.");
+            {
+                ThrowLengthOutOfRange();
+            }
             if (unchecked((uint)Idx) + (uint)length < (uint)IndexEnd)
             {
                 for (int i = 0; i < length; ++i)
@@ -856,16 +908,31 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowNegativeBufferIndex()
+        {
+            throw new ArgumentOutOfRangeException("bufferIndex", "bufferIndex is negative.");
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowLengthOutOfRange()
+        {
+            throw new ArgumentOutOfRangeException("length", "bufferIndex or length is out of range.");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Match(char ch)
         {
             return Idx >= 0 && String[Idx] == ch;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MatchCaseFolded(char caseFoldedChar)
         {
             return Idx >= 0 && CaseFoldTable.FoldedChars[String[Idx]] == caseFoldedChar;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Skip(char ch)
         {
             int idx = Idx;
@@ -880,6 +947,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SkipCaseFolded(char caseFoldedChar)
         {
             int idx = Idx;
@@ -894,6 +962,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Skip(TwoChars twoChars)
         {
             int idx2 = unchecked(Idx + 2);
@@ -915,6 +984,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Match(string chars)
         {
             if (unchecked((uint)Idx) + (uint)chars.Length <= (uint)IndexEnd)
@@ -960,6 +1030,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SkipCaseFolded(string caseFoldedChars)
         {
             int newIdx = unchecked(Idx + caseFoldedChars.Length);
@@ -977,16 +1048,19 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Match(char[] chars, int charsIndex, int length)
         {
             return Skip(chars, charsIndex, length, true);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Skip(char[] chars, int charsIndex, int length)
         {
             return Skip(chars, charsIndex, length, false);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool Skip(char[] chars, int charsIndex, int length, bool backtrackEvenIfCharsMatch)
         {
             if (charsIndex < 0)
@@ -1018,6 +1092,7 @@ namespace FParsec
             return regex.Match("");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SkipWhitespace()
         {
             int lineBegin = 0;
@@ -1105,6 +1180,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SkipUnicodeWhitespace()
         {
             int lineBegin = 0;
@@ -1180,6 +1256,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SkipNewline()
         {
             int idx = Idx;
@@ -1201,6 +1278,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool SkipUnicodeNewline()
         {
             int idx = Idx;
@@ -1303,6 +1381,7 @@ namespace FParsec
             return ind;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SkipRestOfLine(bool skipNewline)
         {
             int idx = Idx;
@@ -1350,6 +1429,7 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string ReadRestOfLine(bool skipNewline)
         {
             int idx = Idx;
@@ -1406,6 +1486,7 @@ namespace FParsec
             return "";
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public char ReadCharOrNewline()
         {
             int idx = Idx;
@@ -1924,6 +2005,7 @@ namespace FParsec
             return "";
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool RestOfStringEquals(string str1, int str1Index, string str2)
         {
             for (int i1 = str1Index + 1, i2 = 1; i2 < str2.Length; ++i1, ++i2)
@@ -1935,6 +2017,7 @@ namespace FParsec
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool RestOfStringEqualsCI(string str1, int str1Index, string cfStr2)
         {
             char[] cftable = CaseFoldTable.FoldedChars;
@@ -2339,6 +2422,7 @@ namespace FParsec
 
         public CharStreamIndexToken IndexToken
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 if (Line <= 0) ThrowInvalidState(); // tests for a zero-initialized state
@@ -2351,6 +2435,7 @@ namespace FParsec
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long GetIndex(CharStream charStreamFromWhichStateWasRetrieved)
         {
             if (Line <= 0) ThrowInvalidState(); // tests for a zero-initialized state
@@ -2360,6 +2445,7 @@ namespace FParsec
             return charStreamFromWhichStateWasRetrieved.GetIndex(Idx);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Position GetPosition(CharStream charStreamFromWhichStateWasRetrieved)
         {
             if (Line <= 0) ThrowInvalidState(); // tests for a zero-initialized state
@@ -2416,13 +2502,16 @@ namespace FParsec
 
         public TUserState UserState
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _UserState; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { _UserState = value; ++StateTag; }
         }
 
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         public CharStreamState<TUserState> State
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return new CharStreamState<TUserState>(this);
@@ -2435,11 +2524,13 @@ namespace FParsec
             throw new ArgumentException("The CharStreamState is invalid.");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BacktrackTo(CharStreamState<TUserState> state)
         {
             BacktrackTo(ref state);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void BacktrackTo(ref CharStreamState<TUserState> state)
         {
             if (state.Line <= 0) ThrowInvalidState(); // tests for zero-initialized states
@@ -2455,11 +2546,13 @@ namespace FParsec
             _Name = state.Name;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string ReadFrom(CharStreamState<TUserState> stateWhereStringBegins, bool normalizeNewlines)
         {
             return ReadFrom(ref stateWhereStringBegins, normalizeNewlines);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string ReadFrom(ref CharStreamState<TUserState> state, bool normalizeNewlines)
         {
             if (state.Line <= 0) ThrowInvalidState(); // tests for zero-initialized states

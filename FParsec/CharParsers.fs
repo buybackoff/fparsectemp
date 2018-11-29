@@ -4,6 +4,7 @@
 [<AutoOpen>]
 module FParsec.CharParsers
 
+open System
 open System.Diagnostics
 open System.Text
 open System.Text.RegularExpressions
@@ -201,24 +202,21 @@ let internal satisfyE f error : Parser<char,'u> =
         | c when isCertainlyNoNLOrEOS c ->
             if f c then
                 stream.Skip()
-                reply.Status <- Ok
-                reply.Result <- c
+                reply <- reply.WithStatusResult(Ok, c)
             else
-                reply.Error <- error
+                reply <- reply.WithError(error)
         | '\r' | '\n' ->
             if f '\n' then
                 stream.SkipNewline() |> ignore
-                reply.Status <- Ok
-                reply.Result <- '\n'
+                reply <- reply.WithStatusResult(Ok, '\n')
             else
-                reply.Error <- error
+                reply <- reply.WithError(error)
         | c ->
              if c <> EOS && f c then
                 stream.Skip()
-                reply.Status <- Ok
-                reply.Result <- c
+                reply <- reply.WithStatusResult(Ok, c)
              else
-                reply.Error <- error
+                reply <- reply.WithError(error)
         reply
 
 let internal skipSatisfyE f error : Parser<unit,'u> =
@@ -228,21 +226,21 @@ let internal skipSatisfyE f error : Parser<unit,'u> =
         | c when isCertainlyNoNLOrEOS c ->
             if f c then
                 stream.Skip()
-                reply.Status <- Ok
+                reply <- reply.WithStatus(Ok)
             else
-                reply.Error <- error
+                reply <- reply.WithError(error)
         | '\r' | '\n' ->
             if f '\n' then
                 stream.SkipNewline() |> ignore
-                reply.Status <- Ok
+                reply <- reply.WithStatus(Ok)
             else
-                reply.Error <- error
+                reply <- reply.WithError(error)
         | c ->
              if c <> EOS && f c then
                 stream.Skip()
-                reply.Status <- Ok
+                reply <- reply.WithStatus(Ok)
              else
-                reply.Error <- error
+                reply <- reply.WithError(error)
         reply
 
 let satisfy f        = satisfyE f NoErrorMessages
@@ -768,25 +766,25 @@ let
             let mutable error  = reply.Error
             stateTag <- stream.StateTag
             reply <- p stream
-            if reply.Status <> Ok then reply.Result <- result1
+            if reply.Status <> Ok then reply <- reply.WithResult(result1)
             else
                 let result2 = reply.Result
                 error <- reply.Error
                 stateTag <- stream.StateTag
                 reply <- p stream
-                if reply.Status <> Ok then reply.Result <- result1 + result2
+                if reply.Status <> Ok then reply <- reply.WithResult(result1 + result2)
                 else
                     let result3 = reply.Result
                     error <- reply.Error
                     stateTag <- stream.StateTag
                     reply <- p stream
-                    if reply.Status <> Ok then reply.Result <- concat3 result1 result2 result3
+                    if reply.Status <> Ok then reply <- reply.WithResult(concat3 result1 result2 result3)
                     else
                         let result4 = reply.Result
                         error <- reply.Error
                         stateTag <- stream.StateTag
                         reply <- p stream
-                        if reply.Status <> Ok then reply.Result <- concat4 result1 result2 result3 result4
+                        if reply.Status <> Ok then reply <- reply.WithResult(concat4 result1 result2 result3 result4)
                         else
                             let n = 2*(result1.Length + result2.Length + result3.Length + result4.Length) + reply.Result.Length
                             let sb = new StringBuilder(n)
@@ -801,17 +799,16 @@ let
                                 sb.Append(reply.Result) |> ignore
                                 stateTag <- stream.StateTag
                                 reply <- p stream
-                            reply.Result <- sb.ToString()
+                            reply <- reply.WithResult(sb.ToString())
             // We assume that the string parser changes the state when it succeeds,
             // so we don't need to merge more than 2 error message lists.
             if stateTag = stream.StateTag then
                 if reply.Status = Error then
-                    reply.Status <- Ok
+                    reply <- reply.WithStatus(Ok)
                 if isNotNull error then
-                    reply.Error <- mergeErrors error reply.Error
+                    reply <- reply.WithError(mergeErrors error reply.Error)
         elif not require1 && reply.Status = Error && stateTag = stream.StateTag then
-            reply.Status <- Ok
-            reply.Result <- ""
+            reply <- reply.WithStatusResult(Ok, "")
         reply
 
 let manyStrings2 p1 p = manyStringsImpl false p1 p
@@ -836,10 +833,9 @@ let
             if reply.Status <> Ok then
                 if stateTag = stream.StateTag then
                     if reply.Status = Error then
-                        reply.Status <- Ok
-                        reply.Result <- result1
+                        reply <- reply.WithStatusResult(Ok, result1)
                     if isNotNull error then
-                        reply.Error <- mergeErrors error reply.Error
+                        reply <- reply.WithError(mergeErrors error reply.Error)
             else
                 // We assume that at least one of the parsers sep and p consume
                 // input when both are called consecutively and succeed. This
@@ -889,15 +885,13 @@ let
                                     reply <- p stream
                 if stateTag = stream.StateTag then
                     if isNotNull result && reply.Status = Error then
-                        reply.Status <- Ok
-                        reply.Result <- result
+                        reply <- reply.WithStatusResult(Ok, result)
                     error <- mergeErrors error reply.Error
                     if stateTag0 = stateTag then
                         error <- mergeErrors error0 error
-                    reply.Error <- error
+                    reply <- reply.WithError(error)
         elif not require1 && reply.Status = Error && stateTag = stream.StateTag then
-            reply.Status <- Ok
-            reply.Result <- ""
+            reply <- reply.WithStatusResult(Ok, "")
         reply
 
 let stringsSepBy  p sep = stringsSepByImpl false p sep
@@ -979,9 +973,19 @@ type internal NLF = NumberLiteralResultFlags
 
 [<Struct;StructLayout(LayoutKind.Sequential, Pack = 1)>]
 [<CustomEquality;NoComparison>]
-type NumberLiteral(string: string, info: NumberLiteralResultFlags, suffixChar1: char, suffixChar2: char, suffixChar3: char, suffixChar4: char) =
+type NumberLiteral(string: 
+    #if NETCOREAPP2_1
+    ReadOnlyMemory<char>,
+    #else
+    string,
+    #endif
+    info: NumberLiteralResultFlags, suffixChar1: char, suffixChar2: char, suffixChar3: char, suffixChar4: char) =
     
-    member t.String with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string
+    member t.String with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string.ToString()
+
+    #if NETCOREAPP2_1
+    member t.Slice with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string
+    #endif
 
     member t.SuffixLength with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.SuffixLengthMask)
     member t.SuffixChar1 with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = suffixChar1
@@ -1016,7 +1020,11 @@ type NumberLiteral(string: string, info: NumberLiteralResultFlags, suffixChar1: 
         | _ -> false
 
     override t.GetHashCode() =
+        #if NETCOREAPP2_1
+        if not string.IsEmpty then string.GetHashCode() else 0
+        #else
         if isNotNull string then string.GetHashCode() else 0
+        #endif
 
 let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: ErrorMessageList) (stream: CharStream<'u>) =
     let index0 = stream.IndexToken
@@ -1131,11 +1139,20 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
 
         if isNull error then
             if (opt &&& NLO.AllowSuffix) = NLO.None  || not (isAsciiLetter c) then
+                #if NETCOREAPP2_1
+                let str = stream.Slice(index0)
+                #else
                 let str = stream.ReadFrom(index0)
+                #endif
                 Reply(NumberLiteral(str, flags, EOS, EOS, EOS, EOS))
             else
-                let mutable str = if (opt &&& NLO.IncludeSuffixCharsInString) <> NLO.None then null
-                                  else stream.ReadFrom(index0)
+                let mutable str = if (opt &&& NLO.IncludeSuffixCharsInString) <> NLO.None then Unchecked.defaultof<_>
+                                  else 
+                                    #if NETCOREAPP2_1
+                                    stream.Slice(index0)
+                                    #else
+                                    stream.ReadFrom(index0)
+                                    #endif
                 let mutable nSuffix = 1
                 let mutable s1 = c
                 let mutable s2 = EOS
@@ -1156,7 +1173,11 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
                             c <- stream.SkipAndPeek()
                 flags <- flags ||| (enum) nSuffix
                 if (opt &&& NLO.IncludeSuffixCharsInString) <> NLO.None then
+                    #if NETCOREAPP2_1
+                    str <- stream.Slice(index0)
+                    #else
                     str <- stream.ReadFrom(index0)
+                    #endif
                 Reply(NumberLiteral(str, flags, s1, s2, s3, s4))
         else
             Reply(Error, error)
@@ -1174,7 +1195,11 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
                                                     true)
            else false
        then
+           #if NETCOREAPP2_1
+           let str = stream.Slice(index0)
+           #else
            let str = stream.ReadFrom(index0)
+           #endif
            Reply(NumberLiteral(str, flags, EOS, EOS, EOS, EOS))
        else
            if flags &&& (NLF.HasMinusSign |||  NLF.HasPlusSign) <> NLF.None then
@@ -1191,7 +1216,11 @@ let pfloat : Parser<float,'u> =
             let nl = reply.Result
             try
                 let d = if nl.IsDecimal then
+                            #if NETCOREAPP2_1
+                            System.Double.Parse(nl.Slice.Span, Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture)
+                            #else
                             System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
+                            #endif
                         elif nl.IsHexadecimal then
                             floatOfHexString nl.String
                         elif nl.IsInfinity then
@@ -1313,7 +1342,7 @@ let internal parseUInt64 (c0: char) (stream: CharStream<'u>) (status: ReplyStatu
         // else c = 0 && not (isDigit c1)
     n
 
-let internal parseUInt32 (c0: char) (stream: CharStream<'u>) (status: ReplyStatus byref) (error: ErrorMessageList byref) =
+let inline internal parseUInt32 (c0: char) (stream: CharStream<'u>) (status: ReplyStatus byref) (error: ErrorMessageList byref) =
     Debug.Assert(isDigit c0 && (status = Ok))
 
     // we rely on the compiler eliminating inactive branches

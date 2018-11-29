@@ -44,7 +44,7 @@ let (>>=) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) =
                     let stateTag1 = stream.StateTag
                     let mutable reply2 = optF.Invoke(reply1.Result, stream)
                     if stateTag1 = stream.StateTag then
-                        reply2.Error <- mergeErrors reply2.Error reply1.Error
+                        reply2 <- reply2.WithError(mergeErrors reply2.Error reply1.Error)
                     reply2
             else
                 Reply(reply1.Status, reply1.Error)
@@ -60,7 +60,7 @@ let (>>=) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) =
                     let stateTag1 = stream.StateTag
                     let mutable reply2 = p2 stream
                     if stateTag1 = stream.StateTag then
-                        reply2.Error <- mergeErrors reply2.Error reply1.Error
+                        reply2 <- reply2.WithError(mergeErrors reply2.Error reply1.Error)
                     reply2
             else
                 Reply(reply1.Status, reply1.Error)
@@ -81,7 +81,7 @@ let (>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
                 let stateTag1 = stream.StateTag
                 let mutable reply2 = q stream
                 if stateTag1 = stream.StateTag then
-                    reply2.Error <- mergeErrors reply2.Error reply1.Error
+                    reply2 <- reply2.WithError(mergeErrors reply2.Error reply1.Error)
                 reply2
         else
             Reply(reply1.Status, reply1.Error)
@@ -95,8 +95,7 @@ let (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
             let error = if isNull reply1.Error then reply2.Error
                         elif stateTag1 <> stream.StateTag then reply2.Error
                         else mergeErrors reply2.Error reply1.Error
-            reply1.Error  <- error
-            reply1.Status <- reply2.Status
+            reply1 <- reply1.WithStatusError(reply2.Status, error)
         reply1
 
 
@@ -129,13 +128,12 @@ let between (popen: Parser<_,'u>) (pclose: Parser<_,'u>) (p: Parser<_,'u>) =
                                 let error2 = mergeErrors reply2.Error reply3.Error
                                 if stateTag1 <> stateTag2 then error2
                                 else mergeErrors reply1.Error error2
-                reply2.Error  <- error
-                reply2.Status <- reply3.Status
+                reply2 <- reply2.WithStatusError(reply3.Status, error)
                 reply2
             else
                 let error = if stateTag1 <> stream.StateTag then reply2.Error
                             else mergeErrors reply1.Error reply2.Error
-                reply2.Error <- error
+                reply2 <- reply2.WithError(error)
                 reply2
         else
             Reply(reply1.Status, reply1.Error)
@@ -159,11 +157,10 @@ let pipe2 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) f =
             error <- if stateTag1 <> stream.StateTag then reply2.Error
                      else mergeErrors error reply2.Error
             if reply2.Status = Ok then
-                 reply.Result <- optF.Invoke(reply1.Result, reply2.Result)
-                 reply.Status <- Ok
-            else reply.Status <- reply2.Status
-        else reply.Status <- reply1.Status
-        reply.Error <- error
+                 reply <- reply.WithStatus(Ok).WithResult(optF.Invoke(reply1.Result, reply2.Result))
+            else reply <- reply.WithStatus(reply2.Status)
+        else reply <- reply.WithStatus(reply1.Status)
+        reply <- reply.WithError(error)
         reply
 
 let pipe3 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) f =
@@ -183,12 +180,11 @@ let pipe3 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) f =
                 error <- if stateTag2 <> stream.StateTag then reply3.Error
                          else mergeErrors error reply3.Error
                 if reply3.Status = Ok then
-                     reply.Result <- optF.Invoke(reply1.Result, reply2.Result, reply3.Result)
-                     reply.Status <- Ok
-                else reply.Status <- reply3.Status
-            else reply.Status <- reply2.Status
-        else reply.Status <- reply1.Status
-        reply.Error <- error
+                     reply <- reply.WithStatusResult(Ok, optF.Invoke(reply1.Result, reply2.Result, reply3.Result))
+                else reply <- reply.WithStatus(reply3.Status)
+            else reply <- reply.WithStatus(reply2.Status)
+        else reply <- reply.WithStatus(reply1.Status)
+        reply <- reply.WithError(error)
         reply
 
 let pipe4 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parser<'d,'u>) f =
@@ -213,13 +209,12 @@ let pipe4 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parse
                     error <- if stateTag3 <> stream.StateTag then reply4.Error
                              else mergeErrors error reply4.Error
                     if reply4.Status = Ok then
-                         reply.Result <- optF.Invoke(reply1.Result, reply2.Result, reply3.Result, reply4.Result)
-                         reply.Status <- Ok
-                    else reply.Status <- reply4.Status
-                else reply.Status <- reply3.Status
-            else reply.Status <- reply2.Status
-        else reply.Status <- reply1.Status
-        reply.Error <- error
+                         reply <- reply.WithStatusResult(Ok, optF.Invoke(reply1.Result, reply2.Result, reply3.Result, reply4.Result))
+                    else reply <- reply.WithStatus(reply4.Status)
+                else reply <- reply.WithStatus(reply3.Status)
+            else reply <- reply.WithStatus(reply2.Status)
+        else reply <- reply.WithStatus(reply1.Status)
+        reply <- reply.WithError(error)
         reply
 
 let pipe5 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parser<'d,'u>) (p5: Parser<'e,'u>) f =
@@ -249,14 +244,13 @@ let pipe5 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parse
                         error <- if stateTag4 <> stream.StateTag then reply5.Error
                                  else mergeErrors error reply5.Error
                         if reply5.Status = Ok then
-                             reply.Result <- optF.Invoke(reply1.Result, reply2.Result, reply3.Result, reply4.Result, reply5.Result)
-                             reply.Status <- Ok
-                        else reply.Status <- reply5.Status
-                    else reply.Status <- reply4.Status
-                else reply.Status <- reply3.Status
-            else reply.Status <- reply2.Status
-        else reply.Status <- reply1.Status
-        reply.Error <- error
+                             reply <- reply.WithStatusResult(Ok, optF.Invoke(reply1.Result, reply2.Result, reply3.Result, reply4.Result, reply5.Result))
+                        else reply <- reply.WithStatus(reply5.Status)
+                    else reply <- reply.WithStatus(reply4.Status)
+                else reply <- reply.WithStatus(reply3.Status)
+            else reply <- reply.WithStatus(reply2.Status)
+        else reply <- reply.WithStatus(reply1.Status)
+        reply <- reply.WithError(error)
         reply
 
 
@@ -272,7 +266,7 @@ let (<|>) (p1: Parser<'a,'u>) (p2: Parser<'a,'u>) : Parser<'a,'u> =
             let error = reply.Error
             reply <- p2 stream
             if stateTag = stream.StateTag then
-                reply.Error <- mergeErrors reply.Error error
+                reply <- reply.WithError(mergeErrors reply.Error error)
         reply
 
 let choice2 (ps: 't when 't :> seq<Parser<'a,'u>>)  =
@@ -287,7 +281,7 @@ let choice2 (ps: 't when 't :> seq<Parser<'a,'u>>)  =
               reply <- iter.Current stream
           if stateTag = stream.StateTag then
               error <- mergeErrors error reply.Error
-              reply.Error <- error
+              reply <- reply.WithError(error)
           reply
       else
           Reply()
@@ -308,7 +302,7 @@ let choice (ps: seq<Parser<'a,'u>>)  =
                     i <- i + 1
                 if stateTag = stream.StateTag then
                     error <- mergeErrors error reply.Error
-                    reply.Error <- error
+                    reply <- reply.WithError(error)
                 reply
     | :? (Parser<'a,'u> list) as ps ->
         match ps with
@@ -328,7 +322,7 @@ let choice (ps: seq<Parser<'a,'u>>)  =
                     reply <- hd stream
                 if stateTag = stream.StateTag then
                     error <- mergeErrors error reply.Error
-                    reply.Error <- error
+                    reply <- reply.WithError(error)
                 reply
     | _ -> fun stream ->
                use iter = ps.GetEnumerator()
@@ -341,7 +335,7 @@ let choice (ps: seq<Parser<'a,'u>>)  =
                        reply <- iter.Current stream
                    if stateTag = stream.StateTag then
                        error <- mergeErrors error reply.Error
-                       reply.Error <- error
+                       reply <- reply.WithError(error)
                    reply
                else
                    Reply()
@@ -362,7 +356,7 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
                     reply <- ps.[i] stream
                     i <- i + 1
                 if stateTag = stream.StateTag then
-                    reply.Error <- error
+                    reply <- reply.WithError(error)
                 reply
     | :? (Parser<'a,'u> list) as ps ->
         match ps with
@@ -379,7 +373,7 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
                    do
                     reply <- hd stream
                 if stateTag = stream.StateTag then
-                    reply.Error <- error
+                    reply <- reply.WithError(error)
                 reply
     | _ -> fun stream ->
                use iter = ps.GetEnumerator()
@@ -389,7 +383,7 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
                    while reply.Status = Error && stateTag = stream.StateTag && iter.MoveNext() do
                        reply <- iter.Current stream
                    if stateTag = stream.StateTag then
-                       reply.Error <- error
+                       reply <- reply.WithError(error)
                    reply
                else
                    Reply(Error, error)
@@ -399,8 +393,7 @@ let (<|>%) (p: Parser<'a,'u>) x : Parser<'a,'u> =
         let stateTag = stream.StateTag
         let mutable reply = p stream
         if reply.Status = Error && stateTag = stream.StateTag then
-            reply.Result <- x
-            reply.Status <- Ok
+            reply <- reply.WithStatusResult(Ok, x)
         reply
 
 let opt (p: Parser<'a,'u>) : Parser<'a option,'u> =
@@ -428,11 +421,10 @@ let attempt (p: Parser<'a,'u>) : Parser<'a,'u> =
         let mutable reply = p stream
         if reply.Status <> Ok then
             if state.Tag <> stream.StateTag then
-                reply.Error  <- nestedError stream reply.Error
-                reply.Status <- Error // turns FatalErrors into Errors
+                reply <- reply.WithStatusError(Error, nestedError stream reply.Error) // turns FatalErrors into Errors
                 stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
             elif reply.Status = FatalError then
-                reply.Status <- Error
+                reply <- reply.WithStatus(Error)
         reply
 
 let (>>=?) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) : Parser<'b,'u> =
@@ -447,9 +439,9 @@ let (>>=?) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) : Parser<'b,'u> =
             if stateTag1 = stream.StateTag then
                 let error = mergeErrors reply1.Error reply2.Error
                 if reply2.Status <> Error || stateTag1 = state.Tag then
-                    reply2.Error <- error
+                    reply2 <- reply2.WithError(error)
                 else
-                    reply2.Error <- nestedError stream error
+                    reply2 <- reply2.WithError(nestedError stream error)
                     stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
             reply2
         else
@@ -466,9 +458,9 @@ let (>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'b,'u> =
             if stateTag1 = stream.StateTag then
                 let error = mergeErrors reply1.Error reply2.Error
                 if reply2.Status <> Error || stateTag1 = state.Tag then
-                    reply2.Error <- error
+                    reply2 <- reply2.WithError(error)
                 else
-                    reply2.Error <- nestedError stream error
+                    reply2 <- reply2.WithError(nestedError stream error)
                     stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
             reply2
         else
@@ -485,9 +477,9 @@ let (.>>.?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<struct('a*'b),'u> =
             if stateTag1 = stream.StateTag then
                 let error = mergeErrors reply1.Error reply2.Error
                 if reply2.Status <> Error || stateTag1 = state.Tag then
-                    reply2.Error <- error
+                    reply2 <- reply2.WithError(error)
                 else
-                    reply2.Error <- nestedError stream error
+                    reply2 <- reply2.WithError(nestedError stream error)
                     stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
             let result = if reply2.Status = Ok then struct (reply1.Result, reply2.Result)
                          else Unchecked.defaultof<_>
@@ -506,15 +498,13 @@ let (.>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'a,'u> =
             if stateTag1 = stream.StateTag then
                 let error = mergeErrors reply1.Error reply2.Error
                 if reply2.Status <> Error || stateTag1 = state.Tag then
-                    reply1.Error <- error
-                    reply1.Status <- reply2.Status
+                    reply1 <- reply1.WithStatusError(reply2.Status, error)
                 else
-                    reply1.Error <- nestedError stream error
+                    reply1 <- reply1.WithError(nestedError stream error)
                     stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
-                    reply1.Status <- Error
+                    reply1 <- reply1.WithStatus(Error)
             else
-                reply1.Error  <- reply2.Error
-                reply1.Status <- reply2.Status
+                reply1 <- reply1.WithStatusError(reply2.Status, reply2.Error)
         reply1
 
 
@@ -527,7 +517,7 @@ let notEmpty (p: Parser<'a,'u>) : Parser<'a,'u> =
         let stateTag = stream.StateTag
         let mutable reply = p stream
         if stateTag = stream.StateTag && reply.Status = Ok then
-            reply.Status <- Error
+            reply <- reply.WithStatus(Error)
         reply
 
 // REVIEW: should `followedBy` use the error messages generated by `p`?
@@ -564,14 +554,14 @@ let lookAhead (p: Parser<'a,'u>) : Parser<'a,'u> =
         let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
         let mutable reply = p stream
         if reply.Status = Ok then
-            reply.Error <- NoErrorMessages
+            reply <- reply.WithError(NoErrorMessages)
             if state.Tag <> stream.StateTag then
                 stream.BacktrackTo(&state) // passed by ref as a (slight) optimization
         else
             if state.Tag <> stream.StateTag then
-                reply.Error  <- nestedError stream reply.Error
+                reply <- reply.WithError(nestedError stream reply.Error)
                 stream.BacktrackTo(&state)
-            reply.Status <- Error // turn FatalErrors into normal Errors
+            reply <- reply.WithStatus(Error) // turn FatalErrors into normal Errors
         reply
 
 
@@ -585,7 +575,7 @@ let (<?>) (p: Parser<'a,'u>) label  : Parser<'a,'u> =
         let stateTag = stream.StateTag
         let mutable reply = p stream
         if stateTag = stream.StateTag then
-            reply.Error <- error
+            reply <- reply.WithError(error)
         reply
 
 let (<??>) (p: Parser<'a,'u>) label : Parser<'a,'u> =
@@ -596,7 +586,7 @@ let (<??>) (p: Parser<'a,'u>) label : Parser<'a,'u> =
         let mutable reply = p stream
         if reply.Status = Ok then
             if state.Tag = stream.StateTag then
-                reply.Error <- expErr
+                reply <- reply.WithError(expErr)
         else
             if state.Tag = stream.StateTag then
                 (*
@@ -610,11 +600,11 @@ let (<??>) (p: Parser<'a,'u>) label : Parser<'a,'u> =
                                 let ne = reply.Error.Head :?> NestedError
                                 ErrorMessageList(CompoundError(label, ne.Position, ne.UserState, ne.Messages))
                             else expErr
-                reply.Error <- error
+                reply <- reply.WithError(error)
             else
-                reply.Error  <- compoundError label stream reply.Error
+                reply <- reply.WithError(compoundError label stream reply.Error)
                 stream.BacktrackTo(&state) // we backtrack ...
-                reply.Status <- FatalError // ... so we need to make sure normal parsing doesn't continue
+                reply <- reply.WithStatus(FatalError) // ... so we need to make sure normal parsing doesn't continue
         reply
 
 let fail msg : Parser<'a,'u> =
@@ -655,9 +645,8 @@ let parray n (p: Parser<'a,'u>) =
                         i <- i + 1
                     else
                         i <- n // break
-                newReply.Result <- xs // we set the result even if there was an error
-            newReply.Error  <- error
-            newReply.Status <- reply.Status
+                newReply <- newReply.WithResult(xs) // we set the result even if there was an error
+            newReply <- newReply.WithError(error).WithStatus(reply.Status)
             newReply
 
 let skipArray n (p: Parser<'a,'u>) =
@@ -679,8 +668,7 @@ let skipArray n (p: Parser<'a,'u>) =
                      else
                          i <- n // break
                 // () is represented as null
-            newReply.Error  <- error
-            newReply.Status <- reply.Status
+            newReply <- newReply.WithStatusError(reply.Status, error)
             newReply
 
 [<Sealed>]
@@ -819,7 +807,7 @@ type Inline =
                     let mutable stateTag = stream.StateTag
                     let mutable endReply = endParser stream
                     while endReply.Status = Error && stateTag = stream.StateTag do
-                        endReply.Status <- enum System.Int32.MinValue
+                        endReply <- endReply.WithStatus(enum System.Int32.MinValue)
                         reply <- elementParser stream
                         if reply.Status = Ok then
                             if stateTag = stream.StateTag then
@@ -856,7 +844,7 @@ type Inline =
                     stateTag <- stream.StateTag
                     endReply <- endParser stream
                     while endReply.Status = Error && stateTag = stream.StateTag do
-                        endReply.Status <- enum System.Int32.MinValue
+                        endReply <- endReply.WithStatus(enum System.Int32.MinValue)
                         reply <- elementParser stream
                         if reply.Status = Ok then
                             if stateTag = stream.StateTag then

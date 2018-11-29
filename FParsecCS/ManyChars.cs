@@ -35,7 +35,7 @@ internal unsafe struct _16CharBuffer {
             if (reply.Status == ReplyStatus.Ok)
                 return ParseRestOfString(stream, reply.Result, reply.Error);
             else
-                return new Reply<string> { Status = reply.Status, Error = reply.Error };
+                return new Reply<string>(reply.Status, default, reply.Error);
         }
 
 #if !LOW_TRUST
@@ -98,12 +98,12 @@ internal unsafe struct _16CharBuffer {
                 }
 #endif
                     error = ErrorMessageList.Merge(error, reply.Error);
-                    return new Reply<string> { Status = ReplyStatus.Ok, Result = str, Error = error };
+                    return new Reply<string>(ReplyStatus.Ok, str, error);
                 }
                 else
                 {
                     error = tag == stream.StateTag ? ErrorMessageList.Merge(error, reply.Error) : reply.Error;
-                    return new Reply<string> { Status = reply.Status, Error = error };
+                    return new Reply<string>(reply.Status, default, error);
                 }
             }
         }
@@ -125,9 +125,9 @@ internal unsafe struct _16CharBuffer {
             if (reply.Status == ReplyStatus.Ok)
                 return ParseRestOfString(stream, reply.Result, reply.Error);
             else if (reply.Status == ReplyStatus.Error && tag == stream.StateTag)
-                return new Reply<string> { Status = ReplyStatus.Ok, Result = "", Error = reply.Error };
+                return new Reply<string>(ReplyStatus.Ok, "", reply.Error);
             else
-                return new Reply<string> { Status = reply.Status, Error = reply.Error };
+                return new Reply<string>(reply.Status, default, reply.Error);
         }
     }
 
@@ -156,7 +156,7 @@ internal unsafe struct _16CharBuffer {
             if (reply.Status == ReplyStatus.Ok)
                 return ParseRestOfString(stream, reply.Result, reply.Error);
             else
-                return new Reply<TResult> { Status = reply.Status, Error = reply.Error };
+                return new Reply<TResult>(reply.Status, default, reply.Error);
         }
 
 #if !LOW_TRUST
@@ -213,7 +213,7 @@ internal unsafe struct _16CharBuffer {
                         error = tag == stream.StateTag
                                 ? ErrorMessageList.Merge(ErrorMessageList.Merge(error, eReply.Error), reply.Error)
                                 : reply.Error;
-                        return new Reply<TResult> { Status = reply.Status, Error = error };
+                        return new Reply<TResult>(reply.Status, default, error);
                     }
                 }
                 else if (eReply.Status == ReplyStatus.Ok)
@@ -233,14 +233,14 @@ internal unsafe struct _16CharBuffer {
                     error = tag == stream.StateTag
                             ? ErrorMessageList.Merge(error, eReply.Error)
                             : eReply.Error;
-                    return new Reply<TResult> { Status = ReplyStatus.Ok, Result = result, Error = error };
+                    return new Reply<TResult>(ReplyStatus.Ok, result, error);
                 }
                 else
                 {
                     error = tag == stream.StateTag
                             ? ErrorMessageList.Merge(error, eReply.Error)
                             : eReply.Error;
-                    return new Reply<TResult> { Status = eReply.Status, Error = error };
+                    return new Reply<TResult>(eReply.Status, default, error);
                 }
             }
         }
@@ -273,17 +273,17 @@ internal unsafe struct _16CharBuffer {
                     var error = tag == stream.StateTag
                                 ? ErrorMessageList.Merge(eReply.Error, reply.Error)
                                 : reply.Error;
-                    return new Reply<TResult> { Status = reply.Status, Error = error };
+                    return new Reply<TResult>(reply.Status, default, error);
                 }
             }
             else if (eReply.Status == ReplyStatus.Ok)
             {
                 var result = Mapping.Invoke("", eReply.Result);
-                return new Reply<TResult> { Status = ReplyStatus.Ok, Result = result, Error = eReply.Error };
+                return new Reply<TResult>(ReplyStatus.Ok, result, eReply.Error );
             }
             else
             {
-                return new Reply<TResult> { Status = eReply.Status, Error = eReply.Error };
+                return new Reply<TResult>(eReply.Status, default, eReply.Error);
             }
         }
     }

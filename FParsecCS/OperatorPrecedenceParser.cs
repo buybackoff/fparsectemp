@@ -539,8 +539,8 @@ namespace FParsec
 
         public override Reply<TTerm> Invoke(CharStream<TUserState> stream)
         {
-            Reply<TTerm> reply = new Reply<TTerm>();
-            reply.Status = ReplyStatus.Ok;
+            Reply<TTerm> reply = new Reply<TTerm>(ReplyStatus.Ok, default, default);
+            
             var nextOp = ParseExpression(ref ZeroPrecedenceOperatorData, ref reply, stream);
             Debug.Assert(nextOp == null);
             return reply;
@@ -574,7 +574,7 @@ namespace FParsec
             {
                 error = ErrorMessageList.Merge(error, reply.Error);
                 if (PrefixOpCount != 0) error = ErrorMessageList.Merge(error, Errors.ExpectedPrefixOperator);
-                reply.Error = error;
+                reply = reply.WithError(error);
             }
             if (reply.Status != ReplyStatus.Ok) goto ReturnNull;
             op = PeekOp(stream, RhsOps);
@@ -602,7 +602,7 @@ namespace FParsec
             else
             {
                 error = ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator);
-                reply.Error = error;
+                reply = reply.WithError(error);
             }
         ReturnNull:
             op = null;
@@ -642,10 +642,10 @@ namespace FParsec
                     || prevOp.Type != OperatorType.Prefix
                     || (prevOp.Associativity | op.Associativity) != Associativity.None)
                 {
-                    reply.Error = asReply.Error;
+                    reply = reply.WithError(asReply.Error);
                     var nextOp = ParseExpression(ref opData, ref reply, stream);
                     if (reply.Status == ReplyStatus.Ok)
-                        reply.Result = op.Mapping1.Invoke(opData.AfterStringValue, reply.Result);
+                        reply = reply.WithResult(op.Mapping1.Invoke(opData.AfterStringValue, reply.Result));
                     return nextOp;
                 }
                 // backtrack to the beginning of the operator
@@ -666,8 +666,7 @@ namespace FParsec
             }
             else
             {
-                reply.Error = asReply.Error;
-                reply.Status = asReply.Status;
+                reply = new Reply<TTerm>(asReply.Status, reply.Result, asReply.Error);
                 return null;
             }
         }
@@ -699,7 +698,7 @@ namespace FParsec
                 if (asReply.Status == ReplyStatus.Ok)
                 {
                     opData.AfterStringValue = asReply.Result;
-                    reply.Error = asReply.Error;
+                    reply = reply.WithError(asReply.Error);
                     if (op.Type == OperatorType.Infix)
                     {
                         var result1 = reply.Result;
@@ -707,7 +706,7 @@ namespace FParsec
                         {
                             var nextOp = ParseExpression(ref opData, ref reply, stream);
                             if (reply.Status == ReplyStatus.Ok)
-                                reply.Result = op.Mapping2.Invoke(opData.AfterStringValue, result1, reply.Result);
+                                reply = reply.WithResult(op.Mapping2.Invoke(opData.AfterStringValue, result1, reply.Result));
                             op = nextOp;
                             if (op == null) break;
                             goto CheckNextOp;
@@ -723,18 +722,17 @@ namespace FParsec
                                 asReply = op.AfterTernaryRightStringParser.Invoke(stream);
                                 if (asReply.Status == ReplyStatus.Ok)
                                 {
-                                    reply.Error = asReply.Error;
+                                    reply = reply.WithError(asReply.Error);
                                     var nextOp = ParseExpression(ref opData, ref reply, stream);
                                     if (reply.Status == ReplyStatus.Ok)
-                                        reply.Result = op.Mapping3.Invoke(opData.AfterStringValue, asReply.Result, result1, result2, reply.Result);
+                                        reply = reply.WithResult(op.Mapping3.Invoke(opData.AfterStringValue, asReply.Result, result1, result2, reply.Result));
                                     op = nextOp;
                                     if (op == null) break;
                                     goto CheckNextOp;
                                 }
                                 else if (asReply.Status != ReplyStatus.Error || stateTag != stream.StateTag)
                                 {
-                                    reply.Error = asReply.Error;
-                                    reply.Status = asReply.Status;
+                                    reply = new Reply<TTerm>(asReply.Status, reply.Result, asReply.Error);
                                     goto ReturnNull;
                                 }
                                 else
@@ -751,7 +749,7 @@ namespace FParsec
                     else
                     {
                         Debug.Assert(op.Type == OperatorType.Postfix);
-                        reply.Result = op.Mapping1.Invoke(opData.AfterStringValue, reply.Result);
+                        reply = reply.WithResult(op.Mapping1.Invoke(opData.AfterStringValue, reply.Result));
                         var lastOp = op;
                         op = PeekOp(stream, RhsOps);
                         // we check for adjacent postfix operators here ...
@@ -768,7 +766,7 @@ namespace FParsec
                         }
                         else
                         {
-                            reply.Error = ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator);
+                            reply = reply.WithError(ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator));
                             break;
                         }
                     }
@@ -798,12 +796,12 @@ namespace FParsec
                         // backtrack
                         stream.Seek(opData.IndexToken);
                         stream.StateTag -= 2;
-                        reply.Error = ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator);
+                        reply = reply.WithError(ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator));
                     }
                     else
                     {
-                        reply.Error = asReply.Error;
-                        reply.Status = asReply.Status;
+                        reply = new Reply<TTerm>(asReply.Status, reply.Result, asReply.Error);
+                        
                     }
                 }
             ReturnNull:
@@ -824,8 +822,8 @@ namespace FParsec
             var secondStringPos = stream.Position;
             var error1 = ExpectedInfixOrPostfixOperator;
             var error2 = MissingTernary2ndStringErrorFormatter.Invoke(Tuple.Create(firstStringPos, secondStringPos, (TernaryOperator<TTerm, TAfterString, TUserState>)opData.Operator, opData.AfterStringValue));
-            reply.Error = ErrorMessageList.Merge(reply.Error, ErrorMessageList.Merge(error1, error2));
-            reply.Status = ReplyStatus.Error;
+
+            reply = new Reply<TTerm>(ReplyStatus.Error, reply.Result, ErrorMessageList.Merge(reply.Error, ErrorMessageList.Merge(error1, error2)));
         }
 
         private void HandlePossibleConflict(ref OperatorData prevOpData,
@@ -849,13 +847,13 @@ namespace FParsec
             {
                 // backtrack and ignore the operator
                 stream.BacktrackTo(ref state);
-                reply.Error = ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator);
+                reply = reply.WithError(ErrorMessageList.Merge(reply.Error, ExpectedInfixOrPostfixOperator));
             }
             else
             {
                 // report AfterStringParser error instead of conflict
-                reply.Error = asReply.Error;
-                reply.Status = asReply.Status;
+                reply = new Reply<TTerm>(asReply.Status, reply.Result, asReply.Error);
+                
             }
         }
 
@@ -871,8 +869,8 @@ namespace FParsec
             var error = _OperatorConflictErrorFormatter.Invoke(
                                 Tuple.Create(prevOpPos, prevOpData.Operator, prevOpData.AfterStringValue),
                                 Tuple.Create(stream.Position, op, afterStringValue));
-            reply.Error = ErrorMessageList.Merge(reply.Error, error);
-            reply.Status = ReplyStatus.Error;
+
+            reply = new Reply<TTerm>(ReplyStatus.Error, reply.Result, ErrorMessageList.Merge(reply.Error, error));
         }
 
         private sealed class DefaultMissingTernary2ndStringErrorFormatter

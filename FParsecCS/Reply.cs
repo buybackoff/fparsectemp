@@ -2,7 +2,7 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 using System;
-using Microsoft.FSharp.Core;
+using System.Runtime.CompilerServices;
 
 namespace FParsec
 {
@@ -14,47 +14,82 @@ namespace FParsec
     }
 
     [System.Diagnostics.DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
-    public struct Reply<TResult> : IEquatable<Reply<TResult>>
+    public readonly struct Reply<TResult> : IEquatable<Reply<TResult>>
     {
-        internal object _errorObject;
-        internal object _errorData;
+        internal readonly ErrorMessageList _error;
+        // internal object _errorData;
 
         public ErrorMessageList Error
         {
-            get => _errorObject is ErrorMessageList el
-                    ? el
-                    : _errorObject is FSharpFunc<string, ErrorMessageList> factory 
-                        ? factory.Invoke((string)_errorData)
-                        : _errorObject is Func<object, ErrorMessageList> factory2 
-                            ? factory2(_errorData) : null;
-            set => _errorObject = value;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _error;
+            //is ErrorMessageList el
+            //    ? el
+            //    : _errorObject is FSharpFunc<string, ErrorMessageList> factory
+            //        ? factory.Invoke((string)_errorData)
+            //        : _errorObject is Func<object, ErrorMessageList> factory2
+            //            ? factory2(_errorData) : null;
+            // set => _error = value;
         }
 
-        public TResult Result;
-        public ReplyStatus Status;
+        public readonly TResult Result;
+        public readonly ReplyStatus Status;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply(TResult result)
         {
             Result = result;
-            _errorObject = null;
-            _errorData = null;
+            _error = null;
+            // _errorData = null;
             Status = ReplyStatus.Ok;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply(ReplyStatus status, ErrorMessageList error)
         {
             Status = status;
-            _errorObject = error;
-            _errorData = null;
+            _error = error;
+            // _errorData = null;
             Result = default(TResult);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply(ReplyStatus status, TResult result, ErrorMessageList error)
         {
             Status = status;
-            _errorObject = error;
-            _errorData = null;
+            _error = error;
+            // _errorData = null;
             Result = result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> WithStatus(ReplyStatus status)
+        {
+            return new Reply<TResult>(status, Result, Error);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> WithStatusError(ReplyStatus status, ErrorMessageList error)
+        {
+            return new Reply<TResult>(status, Result, error);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> WithStatusResult(ReplyStatus status, TResult result)
+        {
+            return new Reply<TResult>(status, result, Error);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> WithError(ErrorMessageList error)
+        {
+            return new Reply<TResult>(Status, Result, error);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> WithResult(TResult result)
+        {
+            return new Reply<TResult>(Status, result, Error);
         }
 
         //public Reply(ReplyStatus status, TResult result, FSharpFunc<object, ErrorMessageList> errorFactory, object errorData)
@@ -79,6 +114,7 @@ namespace FParsec
             return Equals((Reply<TResult>)other);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(Reply<TResult> other)
         {
             return Status == other.Status
@@ -92,11 +128,13 @@ namespace FParsec
                    ^ (Status != ReplyStatus.Ok ? 0 : FastGenericEqualityERComparer<TResult>.Instance.GetHashCode(Result));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator ==(Reply<TResult> r1, Reply<TResult> r2)
         {
             return r1.Equals(r2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator !=(Reply<TResult> r1, Reply<TResult> r2)
         {
             return !r1.Equals(r2);
