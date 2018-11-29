@@ -16,7 +16,7 @@ namespace FParsec
     }
 
     [System.Diagnostics.DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
-    public ref struct Reply<TResult> // : IEquatable<Reply<TResult>>
+    public struct Reply<TResult> : IEquatable<Reply<TResult>>
     {
         internal ErrorMessageList Error;
         public TResult Result;
@@ -46,27 +46,11 @@ namespace FParsec
             Result = result;
         }
 
-        //public Reply(ReplyStatus status, TResult result, FSharpFunc<object, ErrorMessageList> errorFactory, object errorData)
-        //{
-        //    Status = status;
-        //    _errorObject = errorFactory;
-        //    _errorData = errorData;
-        //    Result = result;
-        //}
-
-        //public Reply(ReplyStatus status, TResult result, FSharpFunc<string, ErrorMessageList> errorFactory, object errorData)
-        //{
-        //    Status = status;
-        //    _errorObject = errorFactory;
-        //    _errorData = errorData;
-        //    Result = result;
-        //}
-
-        //public override bool Equals(object other)
-        //{
-        //    if (!(other is Reply<TResult>)) return false;
-        //    return Equals((Reply<TResult>)other);
-        //}
+        public override bool Equals(object other)
+        {
+            if (!(other is Reply<TResult>)) return false;
+            return Equals((Reply<TResult>)other);
+        }
 
         public bool Equals(Reply<TResult> other)
         {

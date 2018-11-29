@@ -9,6 +9,7 @@ open Ast
 open Parser
 open System
 open System.Collections.Generic
+open FParsec
 
 [<EntryPoint>]
 let main(args: string[]) =

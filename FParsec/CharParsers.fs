@@ -4,11 +4,13 @@
 [<AutoOpen>]
 module FParsec.CharParsers
 
+open System
 open System.Diagnostics
 open System.Text
 open System.Text.RegularExpressions
 open System.Runtime.CompilerServices // for MethodImplAttribute
 open System.Runtime.InteropServices
+
 
 #if LOW_TRUST
 #else
@@ -1052,11 +1054,21 @@ type NumberLiteralResultFlags =
 
 type internal NLF = NumberLiteralResultFlags
 
-[<Struct;StructLayout(LayoutKind.Sequential, Pack = 1)>]
+[<IsReadOnly>]
+[<Struct;StructLayout(LayoutKind.Sequential, Pack = 2)>]
 [<CustomEquality;NoComparison>]
-type NumberLiteral(string: string, info: NumberLiteralResultFlags, suffixChar1: char, suffixChar2: char, suffixChar3: char, suffixChar4: char) =
+type NumberLiteral(string: 
+    #if NETCOREAPP2_1
+    ReadOnlyMemory<char>,
+    #else
+    string,
+    #endif
+      info: NumberLiteralResultFlags, suffixChar1: char, suffixChar2: char, suffixChar3: char, suffixChar4: char) =
+    member t.String with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string.ToString()
     
-    member t.String with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string
+    #if NETCOREAPP2_1
+    member t.Slice with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = string
+    #endif
 
     member t.SuffixLength with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = int (info &&& NLF.SuffixLengthMask)
     member t.SuffixChar1 with [<MethodImpl(MethodImplOptions.AggressiveInlining)>]get() = suffixChar1
@@ -1091,7 +1103,11 @@ type NumberLiteral(string: string, info: NumberLiteralResultFlags, suffixChar1: 
         | _ -> false
 
     override t.GetHashCode() =
+        #if NETCOREAPP2_1
+        if not string.IsEmpty then string.GetHashCode() else 0
+        #else
         if isNotNull string then string.GetHashCode() else 0
+        #endif
 
 let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: ErrorMessageList) (stream: CharStream<'u>) =
     let index0 = stream.IndexToken
@@ -1206,11 +1222,20 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
 
         if isNull error then
             if (opt &&& NLO.AllowSuffix) = NLO.None  || not (isAsciiLetter c) then
+                #if NETCOREAPP2_1
+                let str = stream.Slice(index0)
+                #else
                 let str = stream.ReadFrom(index0)
+                #endif
                 Reply(NumberLiteral(str, flags, EOS, EOS, EOS, EOS))
             else
-                let mutable str = if (opt &&& NLO.IncludeSuffixCharsInString) <> NLO.None then null
-                                  else stream.ReadFrom(index0)
+                let mutable str = if (opt &&& NLO.IncludeSuffixCharsInString) <> NLO.None then Unchecked.defaultof<_>
+                                  else 
+                                    #if NETCOREAPP2_1
+                                    stream.Slice(index0)
+                                    #else
+                                    stream.ReadFrom(index0)
+                                    #endif
                 let mutable nSuffix = 1
                 let mutable s1 = c
                 let mutable s2 = EOS
@@ -1231,7 +1256,11 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
                             c <- stream.SkipAndPeek()
                 flags <- flags ||| (enum) nSuffix
                 if (opt &&& NLO.IncludeSuffixCharsInString) <> NLO.None then
+                    #if NETCOREAPP2_1
+                    str <- stream.Slice(index0)
+                    #else
                     str <- stream.ReadFrom(index0)
+                    #endif
                 Reply(NumberLiteral(str, flags, s1, s2, s3, s4))
         else
             Reply(Error, error)
@@ -1249,7 +1278,11 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
                                                     true)
            else false
        then
+           #if NETCOREAPP2_1
+           let str = stream.Slice(index0)
+           #else
            let str = stream.ReadFrom(index0)
+           #endif
            Reply(NumberLiteral(str, flags, EOS, EOS, EOS, EOS))
        else
            if flags &&& (NLF.HasMinusSign |||  NLF.HasPlusSign) <> NLF.None then
@@ -1267,7 +1300,11 @@ let pfloat<'u> : Parser<float,'u> =
                 let nl = reply.Result
                 try
                     let d = if nl.IsDecimal then
+                                #if NETCOREAPP2_1
+                                System.Double.Parse(nl.Slice.Span, Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture)
+                                #else
                                 System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
+                                #endif
                             elif nl.IsHexadecimal then
                                 floatOfHexString nl.String
                             elif nl.IsInfinity then

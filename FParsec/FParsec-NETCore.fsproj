@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <AssemblyName>FParsec</AssemblyName>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;netcoreapp2.1</TargetFrameworks>
     <Tailcalls>false</Tailcalls>
     <OtherFlags>/nooptimizationdata</OtherFlags>
     <DefineConstants>AGGRESSIVE_INLINING;LOW_TRUST</DefineConstants>
