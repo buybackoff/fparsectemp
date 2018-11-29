@@ -1,27 +1,45 @@
-﻿using Microsoft.FSharp.Core;
+﻿using System;
+using Microsoft.FSharp.Core;
 using System.Runtime.CompilerServices;
 
 namespace FParsec
 {
-    public interface IParser<TResult, TUserState>
-    {
-        Reply<TResult> Parse(CharStream<TUserState> charStream);
-    }
+    //public interface IParser<TResult, TUserState>
+    //{
+    //    Reply<TResult> Parse(CharStream<TUserState> charStream);
+    //}
 
     public abstract class ParserX<TResult, TUserState>
     {
-        public abstract Reply<TResult> Invoke(CharStream<TUserState> charStream);
+        protected abstract Reply<TResult> InvokeImpl(CharStream<TUserState> charStream);
+
+        protected IntPtr _parseMethodPtr;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<TResult> Invoke(CharStream<TUserState> charStream)
+        {
+            if (_parseMethodPtr != default)
+            {
+                return CalliHelper.InvokeFast<Reply<TResult>, CharStream<TUserState>>(this, charStream, _parseMethodPtr);
+               
+            }
+
+            return InvokeImpl(charStream);
+        }
     }
 
-    internal sealed class SpacesParser<TUserState> : ParserX<Unit, TUserState>, IParser<Unit, TUserState>
+    internal sealed class SpacesParser<TUserState> : ParserX<Unit, TUserState> //, IParser<Unit, TUserState>
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SpacesParser()
-        { }
+        {
+            _parseMethodPtr = CalliHelper.LdvirtftnSpaces(this);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Reply<Unit> Invoke(CharStream<TUserState> stream)
+        protected override Reply<Unit> InvokeImpl(CharStream<TUserState> stream)
         {
+            // Console.WriteLine("SpacesParser impl: " + _parseMethodPtr);
             return Parse(stream);
         }
 
@@ -40,7 +58,26 @@ namespace FParsec
         }
     }
 
-    internal sealed class TakeLeftParser<TLeft, TRight, TUserState> : ParserX<TLeft, TUserState>, IParser<TLeft, TUserState>
+    internal class Test
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IntPtr TestMe<TLeft, TRight, TUserState>(TakeLeftParser<TLeft, TRight, TUserState> parser, Unit u)
+        {
+            CharStream<TUserState> str = default;
+            var x = parser.Parse(str);
+            return IntPtr.Zero;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Reply<TResult> InvokeFast<TResult, TUserState>(object parser, CharStream<TUserState> stream,
+            IntPtr fnptr)
+        {
+            var str = parser.ToString();
+            return default;
+        }
+    }
+
+    internal sealed class TakeLeftParser<TLeft, TRight, TUserState> : ParserX<TLeft, TUserState> //, IParser<TLeft, TUserState>
     {
         private readonly ParserX<TLeft, TUserState> _l;
         private readonly ParserX<TRight, TUserState> _r;
@@ -50,12 +87,23 @@ namespace FParsec
         {
             _l = l;
             _r = r;
+            _parseMethodPtr = CalliHelper.LdvirtftnTakeLeft(this);
+            // Console.WriteLine(_parseMethodPtr);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Reply<TLeft> Invoke(CharStream<TUserState> stream)
+        protected override Reply<TLeft> InvokeImpl(CharStream<TUserState> stream)
         {
+            // Console.WriteLine("TakeLeftParser impl");
             return Parse(stream);
+
+            //if (_parseMethodPtr == default)
+            //{
+            //    return Parse(stream);
+            //}
+
+            //// Console.WriteLine("Calli");
+            //return CalliHelper.InvokeFast<Reply<TLeft>, CharStream<TUserState>>(this, stream, _parseMethodPtr);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -96,7 +144,7 @@ namespace FParsec
         }
     }
 
-    internal sealed class TakeRightParser<TLeft, TRight, TUserState> : ParserX<TRight, TUserState>, IParser<TRight, TUserState>
+    internal sealed class TakeRightParser<TLeft, TRight, TUserState> : ParserX<TRight, TUserState> //, IParser<TRight, TUserState>
     {
         private readonly ParserX<TLeft, TUserState> _l;
         private readonly ParserX<TRight, TUserState> _r;
@@ -106,11 +154,13 @@ namespace FParsec
         {
             _l = l;
             _r = r;
+            _parseMethodPtr = CalliHelper.LdvirtftnTakeRight(this);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Reply<TRight> Invoke(CharStream<TUserState> stream)
+        protected override Reply<TRight> InvokeImpl(CharStream<TUserState> stream)
         {
+            // Console.WriteLine("TakeRightParser impl");
             return Parse(stream);
         }
 

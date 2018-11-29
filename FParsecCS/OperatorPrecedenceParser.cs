@@ -537,7 +537,7 @@ namespace FParsec
             return null;
         }
 
-        public sealed override Reply<TTerm> Invoke(CharStream<TUserState> stream)
+        protected sealed override Reply<TTerm> InvokeImpl(CharStream<TUserState> stream)
         {
             Reply<TTerm> reply = new Reply<TTerm>();
             reply.Status = ReplyStatus.Ok;

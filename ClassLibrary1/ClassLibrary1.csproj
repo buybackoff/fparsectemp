@@ -1,32 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>FParsecCS</AssemblyName>
-    <RootNamespace>FParsec</RootNamespace>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>1591</NoWarn>
-    <DefineConstants>AGGRESSIVE_INLINING;LOW_TRUST</DefineConstants>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <LangVersion>7.2</LangVersion>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="**\*.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="4.5.2" />
-    <PackageReference Include="System.Globalization.Extensions" Version="4.3.0" />
-    <PackageReference Include="System.Memory" Version="4.5.2-servicing-27114-05" />
-    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
-  </ItemGroup>
 
   <ItemGroup>
     <IL Include="**\*.il" Exclude="**\obj\**\*.il;**\bin\**\*.il" />
   </ItemGroup>
-
   <Target Name="ProcessILAfterCompile" AfterTargets="Compile">
     <CallTarget Targets="InitializeIL; CoreDecompile; CoreCompileIL" />
   </Target>
@@ -123,4 +104,5 @@
     </ItemGroup>
     <Touch Files="$(ILFile)" />
   </Target>
+
 </Project>

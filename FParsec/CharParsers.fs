@@ -110,28 +110,28 @@ let run parser (string: string) =
 // -------------------------------------------------------------
 
 let getPosition() : Parser<Position,'u> =
-    { new ParserX<Position,'u>() with override __.Invoke(stream:CharStream<'u>) = new Reply<Position>(stream.Position) } :> Parser<Position,'u>
+    { new ParserX<Position,'u>() with override __.InvokeImpl(stream:CharStream<'u>) = new Reply<Position>(stream.Position) } :> Parser<Position,'u>
 
 let getUserState() : Parser<'u,'u> =
-    { new ParserX<_,_>() with override __.Invoke(stream) = Reply(stream.UserState) }
+    { new ParserX<_,_>() with override __.InvokeImpl(stream) = Reply(stream.UserState) }
 
 let setUserState (newUserState: 'u) : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
             stream.UserState <- newUserState
             Reply(()) 
     }
 
 let updateUserState (f: 'u -> 'u) : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
               stream.UserState <- f stream.UserState
               Reply(())
     }
 
 let userStateSatisfies f : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
               let status = if f stream.UserState then Ok else Error
               Reply(status, (), NoErrorMessages)
     }
@@ -141,7 +141,7 @@ let userStateSatisfies f : Parser<unit,'u> =
 
 let newlineReturn result : Parser<_,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.SkipNewline() then Reply(result)
         else Reply(Error, Errors.ExpectedNewline)
   }
@@ -151,7 +151,7 @@ let skipNewline<'u> = newlineReturn  ()  : Parser<_,'u>
 
 let unicodeNewlineReturn result : Parser<_,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.SkipUnicodeNewline() then Reply(result)
         else Reply(Error, Errors.ExpectedNewline)
   }
@@ -160,7 +160,7 @@ let skipUnicodeNewline<'u> = unicodeNewlineReturn  ()  : Parser<_,'u>
 
 let internal charReturnE (c: char) result error : Parser<'a,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.Skip(c) then Reply(result)
         else Reply(Error, error)
   }
@@ -182,7 +182,7 @@ let inline internal isCertainlyNoNLOrEOS (c: char) =
 
 let anyChar<'u> : Parser<char,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         let c = stream.ReadCharOrNewline()
         if c <> EOS then Reply(c)
         else Reply(Error, Errors.ExpectedAnyChar)
@@ -190,7 +190,7 @@ let anyChar<'u> : Parser<char,'u> =
 
 let skipAnyChar<'u> : Parser<unit,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.ReadCharOrNewline() <> EOS then Reply(())
         else Reply(Error, Errors.ExpectedAnyChar)
   }
@@ -203,7 +203,7 @@ let
 #endif
         internal fastInlineSatisfyE f error : Parser<char,'u> =
             { new ParserX<_,_>() with 
-                override __.Invoke(stream) =
+                override __.InvokeImpl(stream) =
                   let c = stream.Peek()
                   if f c then
                       stream.Skip()
@@ -214,7 +214,7 @@ let
 
 let internal satisfyE f error : Parser<char,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         let mutable reply = Reply()
         match stream.Peek() with
         | c when isCertainlyNoNLOrEOS c ->
@@ -243,7 +243,7 @@ let internal satisfyE f error : Parser<char,'u> =
 
 let internal skipSatisfyE f error : Parser<unit,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         let mutable reply = Reply()
         match stream.Peek() with
         | c when isCertainlyNoNLOrEOS c ->
@@ -380,7 +380,7 @@ let letter stream = (fastInlineSatisfyE isLetter Errors.ExpectedLetter         )
 let digit  stream = (fastInlineSatisfyE isDigit  Errors.ExpectedDecimalDigit    ).Invoke stream
 let hex<'u> = 
    { new ParserX<_,'u>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         (fastInlineSatisfyE isHex    Errors.ExpectedHexadecimalDigit).Invoke stream
    }
 let octal  stream = (fastInlineSatisfyE isOctal  Errors.ExpectedOctalDigit      ).Invoke stream
@@ -389,35 +389,35 @@ let tab stream = (fastInlineSatisfyE ((=) '\t') Errors.ExpectedTab).Invoke strea
 
 let spaces<'u> : Parser<unit,'u> = new SpacesParser<'u>() :> Parser<unit,'u>
   //{ new ParserX<_,_>() with 
-  //    override __.Invoke(stream) =
+  //    override __.InvokeImpl(stream) =
   //      stream.SkipWhitespace() |> ignore
   //      Reply(())
   //}
 
 let spaces1<'u> : Parser<unit,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.SkipWhitespace() then Reply(())
         else Reply(Error, Errors.ExpectedWhitespace)
   }
 
 let unicodeSpaces<'u> : Parser<unit,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         stream.SkipUnicodeWhitespace() |> ignore
         Reply(())
   }
 
 let unicodeSpaces1<'u> : Parser<unit,'u> =
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.SkipUnicodeWhitespace() then Reply(())
         else Reply(Error, Errors.ExpectedWhitespace)
   }
 
 let eof<'u> : Parser<unit,'u>=
   { new ParserX<_,_>() with 
-      override __.Invoke(stream) =
+      override __.InvokeImpl(stream) =
         if stream.IsEndOfStream then Reply(())
         else Reply(Error, Errors.ExpectedEndOfInput)
   }
@@ -457,14 +457,14 @@ let stringReturn s result : Parser<'a,'u> =
         checkNoNewlineOrEOSChar c1 1
         let cs = TwoChars(c0, c1)
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if stream.Skip(cs) then Reply(result)
                 else Reply(Error, error)
         }
     | _ ->
         checkStringContainsNoNewlineOrEOSChar s "pstring/skipString/stringReturn"
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
               if stream.Skip(s) then Reply(result)
               else Reply(Error, error)
         }
@@ -477,7 +477,7 @@ let pstringCI s : Parser<string,'u> =
     let error = expectedStringCI s
     let cfs = foldCase s
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let index0 = stream.IndexToken
             if stream.SkipCaseFolded(cfs) then
                  Reply(stream.ReadFrom(index0))
@@ -492,7 +492,7 @@ let stringCIReturn (s: string) result : Parser<'a,'u> =
             match c with '\r'|'\n'|EOS -> newlineOrEOSCharInStringArg "skipStringCI/stringCIReturn"  s 0 | _ -> ()
         let cfc = Text.FoldCase(c)
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
               if stream.SkipCaseFolded(cfc) then Reply(result)
               else Reply(Error, error)
         }
@@ -500,7 +500,7 @@ let stringCIReturn (s: string) result : Parser<'a,'u> =
         checkStringContainsNoNewlineOrEOSChar s "skipStringCI/stringCIReturn"
         let cfs = foldCase s
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
               if stream.SkipCaseFolded(cfs) then Reply(result)
               else Reply(Error, error)
         }
@@ -511,7 +511,7 @@ let skipStringCI s = stringCIReturn s ()
 let anyString n : Parser<string,'u> =
     let error = Errors.ExpectedAnySequenceOfNChars(n)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let state = stream.State
           let str = stream.ReadCharsOrNewlines(n, true)
           if str.Length = n then Reply(str)
@@ -523,7 +523,7 @@ let anyString n : Parser<string,'u> =
 let skipAnyString n : Parser<unit,'u> =
     let error = Errors.ExpectedAnySequenceOfNChars(n)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let state = stream.State
           if stream.SkipCharsOrNewlines(n) = n then Reply(())
           else
@@ -532,11 +532,11 @@ let skipAnyString n : Parser<unit,'u> =
     }
 
 let restOfLine skipNewline : Parser<_,_> =
-    { new ParserX<_,_>() with override __.Invoke(stream) = Reply(stream.ReadRestOfLine(skipNewline)) }
+    { new ParserX<_,_>() with override __.InvokeImpl(stream) = Reply(stream.ReadRestOfLine(skipNewline)) }
 
 let skipRestOfLine skipNewline : Parser<_,_> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
            stream.SkipRestOfLine(skipNewline)
            Reply(())
     }
@@ -546,7 +546,7 @@ let charsTillString (s: string) skipString maxCount : Parser<string,'u> =
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     let error = Errors.CouldNotFindString(s)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let mutable charsBeforeString = null
           stream.SkipCharsOrNewlinesUntilString(s, maxCount, true, &charsBeforeString) |> ignore
           if isNotNull charsBeforeString then
@@ -562,7 +562,7 @@ let charsTillStringCI (s: string) skipString maxCount : Parser<string,'u> =
     let cfs = foldCase s
     let error = Errors.CouldNotFindCaseInsensitiveString(s)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let mutable charsBeforeString = null
           stream.SkipCharsOrNewlinesUntilCaseFoldedString(cfs, maxCount, true, &charsBeforeString) |> ignore
           if isNotNull charsBeforeString then
@@ -578,7 +578,7 @@ let skipCharsTillString (s: string) skipString maxCount : Parser<unit,'u> =
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     let error = Errors.CouldNotFindString(s)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let mutable foundString = false
           stream.SkipCharsOrNewlinesUntilString(s, maxCount, &foundString) |> ignore
           if foundString then
@@ -594,7 +594,7 @@ let skipCharsTillStringCI (s: string) skipString maxCount : Parser<unit,'u> =
     let cfs = foldCase s
     let error = Errors.CouldNotFindCaseInsensitiveString(s)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let mutable foundString = false
           stream.SkipCharsOrNewlinesUntilCaseFoldedString(cfs, maxCount, &foundString) |> ignore
           if foundString then
@@ -611,7 +611,7 @@ let
 #endif
            internal manySatisfyImpl require1 (f1: char -> bool) (f: char -> bool) error : Parser<string,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let str = stream.ReadCharsOrNewlinesWhile(f1, f, true)
           if not require1 || str.Length <> 0 then Reply(str)
           else Reply(Error, error)
@@ -623,7 +623,7 @@ let
 #endif
            internal skipManySatisfyImpl require1 (f1: char -> bool) (f: char -> bool) error : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let n = stream.SkipCharsOrNewlinesWhile(f1, f)
           if not require1 || n <> 0 then Reply(())
           else Reply(Error, error)
@@ -650,28 +650,28 @@ let internal manyMinMaxSatisfy2E minCount maxCount f1 f error : Parser<string,'u
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     if minCount > 0 then
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
               let str = stream.ReadCharsOrNewlinesWhile(f1, f, minCount, maxCount, true)
               if str.Length <> 0 then Reply(str)
               else Reply(Error, error)
         }
     else
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
               Reply(stream.ReadCharsOrNewlinesWhile(f1, f, 0, maxCount, true))
         }
 let internal skipManyMinMaxSatisfy2E minCount maxCount f1 f error : Parser<unit,'u> =
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     if minCount > 0 then
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
               let n = stream.SkipCharsOrNewlinesWhile(f1, f, minCount, maxCount)
               if n <> 0 then Reply(())
               else Reply(Error, error)
         }
     else
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 stream.SkipCharsOrNewlinesWhile(f1, f, 0, maxCount) |> ignore
                 Reply(())
         }
@@ -691,7 +691,7 @@ let internal regexE pattern error : Parser<string,'u> =
     let regex = new Regex("\\A" + pattern, RegexOptions.Multiline |||
                                            RegexOptions.ExplicitCapture)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let m = stream.Match(regex)
             if m.Success then
                 let str = m.Value
@@ -791,7 +791,7 @@ let identifier (identifierOptions: IdentifierOptions) : Parser<string, _> =
     let expectedIdentifierError = identifierOptions.ExpectedIdentifierError
     let invalidCharError = identifierOptions.InvalidCharError
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           let str = stream.ReadCharsOrNewlinesWhile(preCheck1, preCheck, true)
           if str.Length <> 0 then
               let mutable errorPos = 0
@@ -832,7 +832,7 @@ let
 #endif
            internal manyStringsImpl require1 (p1: Parser<string,'u>) (p: Parser<string,'u>) : Parser<string,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let mutable stateTag = stream.StateTag
             let mutable reply = p1.Invoke stream
             if reply.Status = Ok then
@@ -898,7 +898,7 @@ let
 #endif
            internal stringsSepByImpl require1 (p: Parser<string,'u>) (sep: Parser<string,'u>) : Parser<string,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let mutable stateTag = stream.StateTag
             let mutable reply = p.Invoke stream
             if reply.Status = Ok then
@@ -979,7 +979,7 @@ let stringsSepBy1 p sep = stringsSepByImpl true  p sep
 
 let skipped (p: Parser<unit,'u>) : Parser<string,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let index0 = stream.IndexToken
             let line0 = stream.Line
             let reply = p.Invoke stream
@@ -995,7 +995,7 @@ let skipped (p: Parser<unit,'u>) : Parser<string,'u> =
 let withSkippedString (f: string -> 'a -> 'b) (p: Parser<'a,'u>) : Parser<'b,'u> =
     let optF = OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let index0 = stream.IndexToken
             let line0 = stream.Line
             let reply = p.Invoke stream
@@ -1294,7 +1294,7 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
 
 let pfloat<'u> : Parser<float,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let reply = numberLiteralE NLO.DefaultFloat Errors.ExpectedFloatingPointNumber stream
             if reply.Status = Ok then
                 let nl = reply.Result
@@ -1599,14 +1599,14 @@ let puint8  stream = pint NumberLiteralOptions.DefaultUnsignedInteger 0xffu     
 
 let notFollowedByEof<'u> : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           if not (stream.IsEndOfStream) then Reply(())
           else Reply(Error, Errors.UnexpectedEndOfInput)
     }
 
 let followedByNewline<'u> : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           match stream.Peek() with
           |'\r' | '\n' -> Reply(())
           | _ -> Reply(Error, Errors.ExpectedNewline)
@@ -1614,7 +1614,7 @@ let followedByNewline<'u> : Parser<unit,'u> =
 
 let notFollowedByNewline<'u> : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
           match stream.Peek() with
           |'\r' | '\n' -> Reply(Error, Errors.UnexpectedNewline)
           | _ -> Reply(())
@@ -1626,13 +1626,13 @@ let followedByString (str: string) : Parser<unit,'u> =
     if str.Length = 1 then
         let chr = str.[0]
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if stream.Match(chr) then Reply(())
                 else Reply(Error, error)
         }
     else
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if stream.Match(str) then Reply(())
                 else Reply(Error, error)
         }
@@ -1643,14 +1643,14 @@ let followedByStringCI str : Parser<unit,'u> =
     if str.Length = 1 then
         let cfChr = Text.FoldCase(str.[0])
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if stream.MatchCaseFolded(cfChr) then Reply(())
                 else Reply(Error, error)
         }
     else
         let cfStr = foldCase str
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if stream.MatchCaseFolded(cfStr) then Reply(())
                 else Reply(Error, error)
         }
@@ -1661,13 +1661,13 @@ let notFollowedByString str : Parser<unit,'u> =
     if str.Length = 1 then
         let chr = str.[0]
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if not (stream.Match(chr)) then Reply(())
                 else Reply(Error, error)
         }
     else
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if not (stream.Match(str)) then Reply(())
                 else Reply(Error, error)
         }
@@ -1678,14 +1678,14 @@ let notFollowedByStringCI str : Parser<unit,'u> =
     if str.Length = 1 then
         let cfChr = Text.FoldCase(str.[0])
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if not (stream.MatchCaseFolded(cfChr)) then Reply(())
                 else Reply(Error, error)
         }
     else
         let cfStr = foldCase str
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 if not (stream.MatchCaseFolded(cfStr)) then Reply(())
                 else Reply(Error, error)
         }
@@ -1702,28 +1702,28 @@ let inline private charDoesSatisfyNot f c =
 
 let previousCharSatisfies f : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let status = charDoesSatisfy f (stream.Peek(-1))
             Reply(status, (), NoErrorMessages)
     }
 
 let previousCharSatisfiesNot f : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
         let status = charDoesSatisfyNot f (stream.Peek(-1))
         Reply(status, (), NoErrorMessages)
     }
 
 let nextCharSatisfies f : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let status = charDoesSatisfy f (stream.Peek())
             Reply(status, (), NoErrorMessages)
     }
 
 let nextCharSatisfiesNot f : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let status = charDoesSatisfyNot f (stream.Peek())
             Reply(status, (), NoErrorMessages)
     }
@@ -1731,7 +1731,7 @@ let nextCharSatisfiesNot f : Parser<unit,'u> =
 let next2CharsSatisfy f : Parser<unit,'u> =
     let optF = OptimizedClosures.FSharpFunc<char, char, bool>.Adapt(f)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let cs = stream.Peek2()
             let status = match cs.Char0, cs.Char1 with
                          | _, EOS
@@ -1751,7 +1751,7 @@ let next2CharsSatisfy f : Parser<unit,'u> =
 let next2CharsSatisfyNot f : Parser<unit,'u> =
     let optF = OptimizedClosures.FSharpFunc<char, char, bool>.Adapt(f)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let cs = stream.Peek2()
             let status = match cs.Char0, cs.Char1 with
                          | _, EOS

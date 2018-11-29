@@ -29,7 +29,7 @@ internal unsafe struct _16CharBuffer {
             CharParser = charParser;
         }
 
-        public override Reply<string> Invoke(CharStream<TUserState> stream)
+        protected override Reply<string> InvokeImpl(CharStream<TUserState> stream)
         {
             var reply = CharParser1.Invoke(stream);
             if (reply.Status == ReplyStatus.Ok)
@@ -118,7 +118,7 @@ internal unsafe struct _16CharBuffer {
             ParserX<char, TUserState> charParser)
                : base(charParser1, charParser) { }
 
-        public override Reply<string> Invoke(CharStream<TUserState> stream)
+        protected override Reply<string> InvokeImpl(CharStream<TUserState> stream)
         {
             var tag = stream.StateTag;
             var reply = CharParser1.Invoke(stream);
@@ -150,7 +150,7 @@ internal unsafe struct _16CharBuffer {
             Mapping = (OptimizedClosures.FSharpFunc<string, TEnd, TResult>)(object)OptimizedClosures.FSharpFunc<string, TEnd, TResult>.Adapt(mapping);
         }
 
-        public override Reply<TResult> Invoke(CharStream<TUserState> stream)
+        protected override Reply<TResult> InvokeImpl(CharStream<TUserState> stream)
         {
             var reply = CharParser1.Invoke(stream);
             if (reply.Status == ReplyStatus.Ok)
@@ -257,7 +257,7 @@ internal unsafe struct _16CharBuffer {
                              FSharpFunc<string, FSharpFunc<TEnd, TResult>> mapping)
                : base(charParser1, charParser, endParser, mapping) { }
 
-        public override Reply<TResult> Invoke(CharStream<TUserState> stream)
+        protected override Reply<TResult> InvokeImpl(CharStream<TUserState> stream)
         {
             var tag = stream.StateTag;
             var eReply = EndParser.Invoke(stream);

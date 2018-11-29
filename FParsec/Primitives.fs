@@ -25,7 +25,7 @@ let udof<'a> = Unchecked.defaultof<'a>
 // Parser primitives and combinators
 // =================================
 
-let preturn x : Parser<_,_> = { new ParserX<_,_>() with override __.Invoke(stream) = Reply(x) }
+let preturn x : Parser<_,_> = { new ParserX<_,_>() with override __.InvokeImpl(stream) = Reply(x) }
 //let pzero: Parser<'a,'u> = 
 //  let (x: Parser<'a,'u>) = { new Parser<'a,'u>() with override __.Invoke(stream: CharStream<'u>) = new Reply<'a>() } //fun stream -> Reply()
 //  x
@@ -39,7 +39,7 @@ let (>>=) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) =
     // optimization for uncurried functions
     //| :? OptimizedClosures.FSharpFunc<'a, CharStream<'u>, Reply<'b>> as optF ->
     //    { new ParserX<_,_>() with
-    //        override __.Invoke(stream) =
+    //        override __.InvokeImpl(stream) =
     //            let reply1 = p.Invoke stream
     //            if reply1.Status = Ok then
     //                if isNull reply1.Error then
@@ -56,7 +56,7 @@ let (>>=) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) =
     //    }
     | _ ->
         { new ParserX<_,_>() with
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 let reply1 = p.Invoke stream
                 if reply1.Status = Ok then
                     let p2 = f reply1.Result
@@ -75,14 +75,14 @@ let (>>=) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) =
 
 let (>>%) (p: Parser<'a,'u>) x =
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let reply = p.Invoke stream
             Reply(reply.Status, x, reply.Error)
     }
 
 let (>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) = TakeRightParser(p,q) :> Parser<'b,'u>
     //{ new ParserX<_,_>() with
-    //    override __.Invoke(stream) =
+    //    override __.InvokeImpl(stream) =
     //        let mutable reply1 = p.Invoke stream
     //        if reply1.Status = Ok then
     //            if isNull reply1.Error then
@@ -100,7 +100,7 @@ let (>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) = TakeRightParser(p,q) :> Parser
 
 let (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) = TakeLeftParser(p,q) :> Parser<'a,'u>
     //{ new ParserX<_,_>() with
-    //    override __.Invoke(stream) =
+    //    override __.InvokeImpl(stream) =
     //        let mutable reply1 = p.Invoke stream
     //        if reply1.Status = Ok then
     //            let stateTag1 = stream.StateTag
@@ -116,7 +116,7 @@ let (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) = TakeLeftParser(p,q) :> Parser<
 
 let (.>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let reply1 = p.Invoke stream
             if reply1.Status = Ok then
                 let stateTag1 = stream.StateTag
@@ -132,7 +132,7 @@ let (.>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
 
 let between (popen: Parser<_,'u>) (pclose: Parser<_,'u>) (p: Parser<_,'u>) =
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let reply1 = popen.Invoke stream
             if reply1.Status = Ok then
                 let stateTag1 = stream.StateTag
@@ -159,7 +159,7 @@ let between (popen: Parser<_,'u>) (pclose: Parser<_,'u>) (p: Parser<_,'u>) =
 
 let (|>>) (p: Parser<'a,'u>) f =
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let reply = p.Invoke stream
             Reply(reply.Status,
                   (if reply.Status = Ok then f reply.Result else Unchecked.defaultof<_>),
@@ -169,7 +169,7 @@ let (|>>) (p: Parser<'a,'u>) f =
 let pipe2 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) f =
     let optF = OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let mutable reply = Reply()
             let reply1 = p1.Invoke stream
             let mutable error = reply1.Error
@@ -190,7 +190,7 @@ let pipe2 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) f =
 let pipe3 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) f =
     // let optF = OptimizedClosures.FSharpFunc<_,_,_,_>.Adapt(fun x -> f(x).Invoke)
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let mutable reply = Reply()
             let reply1 = p1.Invoke stream
             let mutable error = reply1.Error
@@ -217,7 +217,7 @@ let pipe3 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) f =
 let pipe4 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parser<'d,'u>) f =
     // let optF = OptimizedClosures.FSharpFunc<_,_,_,_,_>.Adapt(fun x -> f(x).Invoke)
     {new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let mutable reply = Reply()
             let reply1 = p1.Invoke stream
             let mutable error = reply1.Error
@@ -250,7 +250,7 @@ let pipe4 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parse
 let pipe5 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parser<'d,'u>) (p5: Parser<'e,'u>) f =
     let optF = OptimizedClosures.FSharpFunc<_,_,_,_,_,_>.Adapt(f)
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let mutable reply = Reply()
             let reply1 = p1.Invoke stream
             let mutable error = reply1.Error
@@ -292,7 +292,7 @@ let pipe5 (p1: Parser<'a,'u>) (p2: Parser<'b,'u>) (p3: Parser<'c,'u>) (p4: Parse
 
 let (<|>) (p1: Parser<'a,'u>) (p2: Parser<'a,'u>) : Parser<'a,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) = 
+        override __.InvokeImpl(stream) = 
             let mutable stateTag = stream.StateTag
             let mutable reply = p1.Invoke stream
             if reply.Status = Error && stateTag = stream.StateTag then
@@ -323,10 +323,10 @@ let choice2 (ps: 't when 't :> seq<Parser<'a,'u>>)  =
 let choice (ps: seq<Parser<'a,'u>>)  =
     match ps with
     | :? (Parser<'a,'u>[]) as ps ->
-        if ps.Length = 0 then { new Parser<'a,'u>() with override __.Invoke(stream: CharStream<'u>) = new Reply<'a>() } // pzero
+        if ps.Length = 0 then { new Parser<'a,'u>() with override __.InvokeImpl(stream: CharStream<'u>) = new Reply<'a>() } // pzero
         else
             { new ParserX<'a,'u>() with 
-                override __.Invoke(stream) =
+                override __.InvokeImpl(stream) =
                     let stateTag = stream.StateTag
                     let mutable error = NoErrorMessages
                     let mutable reply = ps.[0].Invoke stream
@@ -342,10 +342,10 @@ let choice (ps: seq<Parser<'a,'u>>)  =
             }
     | :? (Parser<'a,'u> list) as ps ->
         match ps with
-        | [] -> { new Parser<'a,'u>() with override __.Invoke(stream: CharStream<'u>) = new Reply<'a>() }
+        | [] -> { new Parser<'a,'u>() with override __.InvokeImpl(stream: CharStream<'u>) = new Reply<'a>() }
         | hd::tl ->
             { new ParserX<'a,'u>() with 
-                override __.Invoke(stream) =
+                override __.InvokeImpl(stream) =
                     let stateTag = stream.StateTag
                     let mutable error = NoErrorMessages
                     let mutable hd, tl = hd, tl
@@ -364,7 +364,7 @@ let choice (ps: seq<Parser<'a,'u>>)  =
             }
     | _ -> 
         { new ParserX<'a,'u>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                use iter = ps.GetEnumerator()
                if iter.MoveNext() then
                    let stateTag = stream.StateTag
@@ -387,10 +387,10 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
     match ps with
     | :? (Parser<'a,'u>[]) as ps ->
         if ps.Length = 0 then
-            { new ParserX<_,_>() with  override __.Invoke(stream) = Reply(Error, error)}
+            { new ParserX<_,_>() with  override __.InvokeImpl(stream) = Reply(Error, error)}
         else
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 let stateTag = stream.StateTag
                 let mutable reply = ps.[0].Invoke stream
                 let mutable i = 1
@@ -403,10 +403,10 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
         }
     | :? (Parser<'a,'u> list) as ps ->
         match ps with
-        | [] -> { new ParserX<_,_>() with  override __.Invoke(stream) = Reply(Error, error) }
+        | [] -> { new ParserX<_,_>() with  override __.InvokeImpl(stream) = Reply(Error, error) }
         | hd::tl ->
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =
+            override __.InvokeImpl(stream) =
                 let stateTag = stream.StateTag
                 let mutable hd, tl = hd, tl
                 let mutable reply = hd.Invoke stream
@@ -422,7 +422,7 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
             }
     | _ -> 
         { new ParserX<_,_>() with 
-            override __.Invoke(stream) =    
+            override __.InvokeImpl(stream) =    
                use iter = ps.GetEnumerator()
                if iter.MoveNext() then
                    let stateTag = stream.StateTag
@@ -438,7 +438,7 @@ let choiceL (ps: seq<Parser<'a,'u>>) label : Parser<_,_> =
 
 let (<|>%) (p: Parser<'a,'u>) x : Parser<'a,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =  
+        override __.InvokeImpl(stream) =  
           let stateTag = stream.StateTag
           let mutable reply = p.Invoke stream
           if reply.Status = Error && stateTag = stream.StateTag then
@@ -449,7 +449,7 @@ let (<|>%) (p: Parser<'a,'u>) x : Parser<'a,'u> =
 
 let opt (p: Parser<'a,'u>) : Parser<'a option,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =  
+        override __.InvokeImpl(stream) =  
             let stateTag = stream.StateTag
             let reply = p.Invoke stream
             if reply.Status = Ok then
@@ -462,7 +462,7 @@ let opt (p: Parser<'a,'u>) : Parser<'a option,'u> =
 
 let optional (p: Parser<'a,'u>) : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =  
+        override __.InvokeImpl(stream) =  
             let stateTag = stream.StateTag
             let reply = p.Invoke stream
             let status = if reply.Status = Error && stateTag = stream.StateTag then Ok else reply.Status
@@ -471,7 +471,7 @@ let optional (p: Parser<'a,'u>) : Parser<unit,'u> =
 
 let attempt (p: Parser<'a,'u>) : Parser<'a,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) = 
+        override __.InvokeImpl(stream) = 
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let mutable reply = p.Invoke stream
@@ -488,7 +488,7 @@ let attempt (p: Parser<'a,'u>) : Parser<'a,'u> =
 let (>>=?) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) : Parser<'b,'u> =
     // let optF = OptimizedClosures.FSharpFunc<_,_,_>.Adapt(fun (a) -> f(a).Invoke)
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
         // state is only declared mutable so it can be passed by ref, it won't be mutated
           let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
           let reply1 = p.Invoke stream
@@ -509,7 +509,7 @@ let (>>=?) (p: Parser<'a,'u>) (f: 'a -> Parser<'b,'u>) : Parser<'b,'u> =
 
 let (>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'b,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let reply1 = p.Invoke stream
@@ -530,7 +530,7 @@ let (>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'b,'u> =
 
 let (.>>.?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<struct('a*'b),'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let reply1 = p.Invoke stream
@@ -553,7 +553,7 @@ let (.>>.?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<struct('a*'b),'u> =
 
 let (.>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'a,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let mutable reply1 = p.Invoke stream
@@ -581,7 +581,7 @@ let (.>>?) (p: Parser<'a,'u>) (q: Parser<'b,'u>) : Parser<'a,'u> =
 
 let notEmpty (p: Parser<'a,'u>) : Parser<'a,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let stateTag = stream.StateTag
             let mutable reply = p.Invoke stream
             if stateTag = stream.StateTag && reply.Status = Ok then
@@ -593,7 +593,7 @@ let notEmpty (p: Parser<'a,'u>) : Parser<'a,'u> =
 
 let internal followedByE (p: Parser<'a,'u>) error : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let reply = p.Invoke stream
@@ -608,7 +608,7 @@ let followedByL p label = followedByE p (expected label)
 
 let internal notFollowedByE (p: Parser<'a,'u>) error : Parser<unit,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let reply = p.Invoke stream
@@ -623,7 +623,7 @@ let notFollowedByL p label = notFollowedByE p (unexpected label)
 
 let lookAhead (p: Parser<'a,'u>) : Parser<'a,'u> =
     { new ParserX<_,_>() with 
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let mutable reply = p.Invoke stream
@@ -647,7 +647,7 @@ let lookAhead (p: Parser<'a,'u>) : Parser<'a,'u> =
 let (<?>) (p: Parser<'a,'u>) label  : Parser<'a,'u> =
     let error = expected label
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             let stateTag = stream.StateTag
             let mutable reply = p.Invoke stream
             if stateTag = stream.StateTag then
@@ -658,7 +658,7 @@ let (<?>) (p: Parser<'a,'u>) label  : Parser<'a,'u> =
 let (<??>) (p: Parser<'a,'u>) label : Parser<'a,'u> =
     let expErr = expected label
     { new ParserX<_,_>() with
-        override __.Invoke(stream) =
+        override __.InvokeImpl(stream) =
             // state is only declared mutable so it can be passed by ref, it won't be mutated
             let mutable state = CharStreamState(stream) // = stream.State (manually inlined)
             let mutable reply = p.Invoke stream
@@ -688,11 +688,11 @@ let (<??>) (p: Parser<'a,'u>) label : Parser<'a,'u> =
 
 let fail msg : Parser<'a,'u> =
     let error = messageError msg
-    { new ParserX<_,_>() with override __.Invoke(stream) = Reply(Error, error) }
+    { new ParserX<_,_>() with override __.InvokeImpl(stream) = Reply(Error, error) }
 
 let failFatally msg : Parser<'a,'u> =
     let error = messageError msg
-    { new ParserX<_,_>() with override __.Invoke(stream) = Reply(FatalError, error) }
+    { new ParserX<_,_>() with override __.InvokeImpl(stream) = Reply(FatalError, error) }
 
 // -----------------
 // Parsing sequences
@@ -707,7 +707,7 @@ let parray n (p: Parser<'a,'u>) =
     if n = 0 then preturn [||]
     else
       { new ParserX<_,_>() with
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
               let mutable reply = p.Invoke stream
               let mutable error = reply.Error
               let mutable newReply = Reply()
@@ -735,7 +735,7 @@ let skipArray n (p: Parser<'a,'u>) =
     if n = 0 then preturn ()
     else
       { new ParserX<_,_>() with
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
               let mutable reply = p.Invoke stream
               let mutable error = reply.Error
               let mutable newReply = Reply()
@@ -772,7 +772,7 @@ type Inline =
                             ?firstElementParser: Parser<_,_>,
                             ?resultForEmptySequence) : Parser<_,_> =
       { new ParserX<_,_>() with
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
             let mutable stateTag = stream.StateTag
             let firstElementParser = match firstElementParser with Some p -> p | _ -> elementParser
             let mutable reply = firstElementParser.Invoke stream
@@ -819,7 +819,7 @@ type Inline =
                              ?resultForEmptySequence,
                              ?separatorMayEndSequence) : Parser<_,'u> =
       { new ParserX<_,_>() with
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
               let mutable stateTag = stream.StateTag
               let firstElementParser = match firstElementParser with Some p -> p | _ -> elementParser
               let mutable reply = firstElementParser.Invoke stream
@@ -883,7 +883,7 @@ type Inline =
                                 ?firstElementParser: Parser<_,_>,
                                 ?resultForEmptySequence) : Parser<_,_> =
       { new ParserX<_,_>() with
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
               // This is really, really ugly, but it does the job,
               // and it does it about as efficient as it can be done here.
               let firstElementParser = match firstElementParser with Some p -> p | _ -> elementParser
@@ -1020,9 +1020,9 @@ let chainr p op x = chainr1 p op <|>% x
 let createParserForwardedToRef() =
     let dummyParser = 
       { new ParserX<_,_>() with 
-          override __.Invoke(stream) =
+          override __.InvokeImpl(stream) =
             failwith "a parser created with createParserForwardedToRef was not initialized" 
             Reply()
       }
     let r = ref dummyParser
-    ({ new ParserX<_,_>() with override __.Invoke(stream) = (!r).Invoke stream }), r : Parser<_,'u> * Parser<_,'u> ref
+    ({ new ParserX<_,_>() with override __.InvokeImpl(stream) = (!r).Invoke stream }), r : Parser<_,'u> * Parser<_,'u> ref
