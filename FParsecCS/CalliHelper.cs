@@ -12,13 +12,13 @@ namespace FParsec
         public static extern IntPtr Ldvirtftn<TResult, TUserState, TParser>(TParser parser);
 
         [MethodImpl(MethodImplOptions.ForwardRef | MethodImplOptions.AggressiveInlining)]
-        public static extern IntPtr LdvirtftnTakeLeft<TLeft, TRight, TUserState>(TakeLeftParser<TLeft, TRight, TUserState> parser);
+        public static extern IntPtr LdvirtftnTakeLeft<TLeft, TRight, TUserState>();
 
         [MethodImpl(MethodImplOptions.ForwardRef | MethodImplOptions.AggressiveInlining)]
-        public static extern IntPtr LdvirtftnTakeRight<TLeft, TRight, TUserState>(TakeRightParser<TLeft, TRight, TUserState> parser);
+        public static extern IntPtr LdvirtftnTakeRight<TLeft, TRight, TUserState>();
 
         [MethodImpl(MethodImplOptions.ForwardRef | MethodImplOptions.AggressiveInlining)]
-        public static extern IntPtr LdvirtftnSpaces<TUserState>(SpacesParser<TUserState> parser);
+        public static extern IntPtr LdvirtftnSpaces<TUserState>();
 
         [MethodImpl(MethodImplOptions.ForwardRef | MethodImplOptions.AggressiveInlining)]
         public static extern TResult InvokeFast<TResult, TStream>(object parser, TStream stream, IntPtr fnptr);
