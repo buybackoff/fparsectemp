@@ -17,7 +17,7 @@ open FParsec.Error
 [<Literal>] val FatalError: ReplyStatus = ReplyStatus.FatalError;;
 
 /// The type of the parser functions supported by FParsec combinators.
-type Parser<'Result, 'UserState> = CharStream<'UserState> -> Reply<'Result>
+type Parser<'Result, 'UserState> = ParserX<'Result, 'UserState>
 
 // =================================
 // Parser primitives and combinators
@@ -31,7 +31,7 @@ val preturn: 'a -> Parser<'a,'u>
 
 /// The parser `pzero` always fails with an empty error message list, i.e. an unspecified error.
 /// `pzero x` is defined as `fun stream -> Reply(Error, NoErrorMessages)`.
-val pzero: Parser<'a,'u>
+// val pzero: Parser<'a,'u>
 
 // ---------------------------
 // Chaining and piping parsers
@@ -51,7 +51,7 @@ val (>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'b,'u>
 val (.>>): Parser<'a,'u> -> Parser<'b,'u> -> Parser<'a,'u>
 
 /// The parser `p1 .>>. p2` applies the parsers `p1` and `p2` in sequence and returns the results in a tuple.
-val inline (.>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<struct ('a * 'b),'u>
+val (.>>.): Parser<'a,'u> -> Parser<'b,'u> -> Parser<struct ('a * 'b),'u>
 
 /// The parser `between popen pclose p` applies the parsers `pOpen`, `p` and `pEnd` in sequence.
 /// It returns the result of `p`.
@@ -386,29 +386,6 @@ val chainr1: Parser<'a,'u> -> Parser<('a -> 'a -> 'a),'u>       -> Parser<'a,'u>
 
 /// The parser `chainr p op defVal` is equivalent to `chainr1 p op <|>% defVal`.
 val chainr:  Parser<'a,'u> -> Parser<('a -> 'a -> 'a),'u> -> 'a -> Parser<'a,'u>
-
-
-// ------------------------------
-// Computation expression syntax
-// ------------------------------
-
-/// The type of the "builder object" that can be used to build parsers with
-/// F#'s "computation expression" syntax a.k.a. "workflow" syntax.
-[<Sealed>]
-type ParserCombinator =
-    new : unit -> ParserCombinator
-    member Delay: f:(unit -> Parser<'a,'u>) -> Parser<'a,'u>
-    member Return: 'a -> Parser<'a,'u>
-    member Bind: Parser<'a,'u>*('a -> Parser<'b,'u>) -> Parser<'b,'u>
-    member Zero: unit -> Parser<'a,'u>
-    member ReturnFrom: Parser<'a,'u> -> Parser<'a,'u>
-    // no Combine member by purpose
-    member TryWith: p:Parser<'a,'u> * cf:(exn -> Parser<'a,'u>) -> Parser<'a,'u>
-    member TryFinally: p:Parser<'a,'u>* ff:(unit -> unit) -> Parser<'a,'u>
-
-/// The builder object for building parsers using F#'s computation expression syntax.
-val parse : ParserCombinator
-
 
 // ----------------------
 // Other helper functions

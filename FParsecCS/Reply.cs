@@ -2,6 +2,8 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Microsoft.FSharp.Core;
 
 namespace FParsec
@@ -14,46 +16,33 @@ namespace FParsec
     }
 
     [System.Diagnostics.DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
-    public struct Reply<TResult> : IEquatable<Reply<TResult>>
+    public ref struct Reply<TResult> // : IEquatable<Reply<TResult>>
     {
-        internal object _errorObject;
-        internal object _errorData;
-
-        public ErrorMessageList Error
-        {
-            get => _errorObject is ErrorMessageList el
-                    ? el
-                    : _errorObject is FSharpFunc<string, ErrorMessageList> factory 
-                        ? factory.Invoke((string)_errorData)
-                        : _errorObject is Func<object, ErrorMessageList> factory2 
-                            ? factory2(_errorData) : null;
-            set => _errorObject = value;
-        }
-
+        internal ErrorMessageList Error;
         public TResult Result;
         public ReplyStatus Status;
 
         public Reply(TResult result)
         {
             Result = result;
-            _errorObject = null;
-            _errorData = null;
+            Error = null;
+            // _errorData = null;
             Status = ReplyStatus.Ok;
         }
 
         public Reply(ReplyStatus status, ErrorMessageList error)
         {
             Status = status;
-            _errorObject = error;
-            _errorData = null;
+            Error = error;
+            // _errorData = null;
             Result = default(TResult);
         }
 
         public Reply(ReplyStatus status, TResult result, ErrorMessageList error)
         {
             Status = status;
-            _errorObject = error;
-            _errorData = null;
+            Error = error;
+            // _errorData = null;
             Result = result;
         }
 
@@ -73,11 +62,11 @@ namespace FParsec
         //    Result = result;
         //}
 
-        public override bool Equals(object other)
-        {
-            if (!(other is Reply<TResult>)) return false;
-            return Equals((Reply<TResult>)other);
-        }
+        //public override bool Equals(object other)
+        //{
+        //    if (!(other is Reply<TResult>)) return false;
+        //    return Equals((Reply<TResult>)other);
+        //}
 
         public bool Equals(Reply<TResult> other)
         {

@@ -19,7 +19,7 @@
     <Compile Include="Error.fs" />
     <Compile Include="Primitives.fsi" />
     <Compile Include="Primitives.fs" />
-    <Compile Include="CharParsers.fsi" />
+    <!--<Compile Include="CharParsers.fsi_" />-->
     <Compile Include="CharParsers.fs" />
   </ItemGroup>
 

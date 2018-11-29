@@ -57,8 +57,9 @@ type ParserResult<'Result,'UserState> =
             | Failure(struct (msg,_,_)) ->
                 sprintf "Failure:\n%s" msg
 
+[<MethodImpl(MethodImplOptions.AggressiveInlining)>]              
 let internal applyParser (parser: Parser<'Result,'UserState>) (stream: CharStream<'UserState>) =
-    let reply = parser stream
+    let reply = parser.Invoke stream
     if reply.Status = Ok then
         Success(struct (reply.Result, stream.UserState, stream.Position))
     else
@@ -106,51 +107,61 @@ let run parser (string: string) =
 // Reading the input stream position and handling the user state
 // -------------------------------------------------------------
 
-let getPosition : Parser<Position,'u> =
-    fun stream -> Reply(stream.Position)
+let getPosition() : Parser<Position,'u> =
+    { new ParserX<Position,'u>() with override __.Invoke(stream:CharStream<'u>) = new Reply<Position>(stream.Position) } :> Parser<Position,'u>
 
-let getUserState : Parser<'u,'u> =
-    fun stream -> Reply(stream.UserState)
+let getUserState() : Parser<'u,'u> =
+    { new ParserX<_,_>() with override __.Invoke(stream) = Reply(stream.UserState) }
 
 let setUserState (newUserState: 'u) : Parser<unit,'u> =
-    fun stream ->
-        stream.UserState <- newUserState
-        Reply(())
+    { new ParserX<_,_>() with 
+          override __.Invoke(stream) =
+            stream.UserState <- newUserState
+            Reply(()) 
+    }
 
 let updateUserState (f: 'u -> 'u) : Parser<unit,'u> =
-    fun stream ->
-        stream.UserState <- f stream.UserState
-        Reply(())
+    { new ParserX<_,_>() with 
+          override __.Invoke(stream) =
+              stream.UserState <- f stream.UserState
+              Reply(())
+    }
 
 let userStateSatisfies f : Parser<unit,'u> =
-    fun stream ->
-        let status = if f stream.UserState then Ok else Error
-        Reply(status, (), NoErrorMessages)
-
+    { new ParserX<_,_>() with 
+          override __.Invoke(stream) =
+              let status = if f stream.UserState then Ok else Error
+              Reply(status, (), NoErrorMessages)
+    }
 // --------------------
 // Parsing single chars
 // --------------------
 
 let newlineReturn result : Parser<_,'u> =
-    fun stream ->
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.SkipNewline() then Reply(result)
         else Reply(Error, Errors.ExpectedNewline)
+  }
 
 let newline<'u>     = newlineReturn '\n' : Parser<_,'u>
 let skipNewline<'u> = newlineReturn  ()  : Parser<_,'u>
 
 let unicodeNewlineReturn result : Parser<_,'u> =
-    fun stream ->
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.SkipUnicodeNewline() then Reply(result)
         else Reply(Error, Errors.ExpectedNewline)
-
+  }
 let unicodeNewline<'u>     = unicodeNewlineReturn '\n' : Parser<_,'u>
 let skipUnicodeNewline<'u> = unicodeNewlineReturn  ()  : Parser<_,'u>
 
 let internal charReturnE (c: char) result error : Parser<'a,'u> =
-    fun stream ->
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.Skip(c) then Reply(result)
         else Reply(Error, error)
+  }
 
 let charReturn c result : Parser<'a,'u> =
     match c with
@@ -167,17 +178,20 @@ let inline internal isCertainlyNoNLOrEOS (c: char) =
     // '\n' = '\u000A', '\r' = '\u000D'
     unativeint c - 0xEun < unativeint EOS - 0xEun
 
-let anyChar : Parser<char,'u> =
-    fun stream ->
+let anyChar<'u> : Parser<char,'u> =
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         let c = stream.ReadCharOrNewline()
         if c <> EOS then Reply(c)
         else Reply(Error, Errors.ExpectedAnyChar)
+        }
 
-let skipAnyChar : Parser<unit,'u> =
-    fun stream ->
+let skipAnyChar<'u> : Parser<unit,'u> =
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.ReadCharOrNewline() <> EOS then Reply(())
         else Reply(Error, Errors.ExpectedAnyChar)
-
+  }
 
 // doesn't check for newlines or EOS
 let
@@ -185,17 +199,20 @@ let
 #else
     inline
 #endif
-           internal fastInlineSatisfyE f error : Parser<char,'u> =
-    fun stream ->
-        let c = stream.Peek()
-        if f c then
-            stream.Skip()
-            Reply(c)
-        else
-            Reply(Error, error)
+        internal fastInlineSatisfyE f error : Parser<char,'u> =
+            { new ParserX<_,_>() with 
+                override __.Invoke(stream) =
+                  let c = stream.Peek()
+                  if f c then
+                      stream.Skip()
+                      Reply(c)
+                  else
+                      Reply(Error, error)
+            }
 
 let internal satisfyE f error : Parser<char,'u> =
-    fun stream ->
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         let mutable reply = Reply()
         match stream.Peek() with
         | c when isCertainlyNoNLOrEOS c ->
@@ -220,9 +237,11 @@ let internal satisfyE f error : Parser<char,'u> =
              else
                 reply.Error <- error
         reply
+    }
 
 let internal skipSatisfyE f error : Parser<unit,'u> =
-    fun stream ->
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         let mutable reply = Reply()
         match stream.Peek() with
         | c when isCertainlyNoNLOrEOS c ->
@@ -244,6 +263,7 @@ let internal skipSatisfyE f error : Parser<unit,'u> =
              else
                 reply.Error <- error
         reply
+        }
 
 let satisfy f        = satisfyE f NoErrorMessages
 let satisfyL f label = satisfyE f (expected label)
@@ -346,46 +366,59 @@ let inline isHex (c: char) =
 let inline isOctal (c: char) =
     uint32 c - uint32 '0' <= uint32 '7' - uint32 '0'
 
-let asciiUpper  stream = fastInlineSatisfyE isAsciiUpper  Errors.ExpectedAsciiUppercaseLetter stream
-let asciiLower  stream = fastInlineSatisfyE isAsciiLower  Errors.ExpectedAsciiLowercaseLetter stream
-let asciiLetter stream = fastInlineSatisfyE isAsciiLetter Errors.ExpectedAsciiLetter stream
+let asciiUpper  stream = (fastInlineSatisfyE isAsciiUpper  Errors.ExpectedAsciiUppercaseLetter).Invoke stream
+let asciiLower  stream = (fastInlineSatisfyE isAsciiLower  Errors.ExpectedAsciiLowercaseLetter).Invoke stream
+let asciiLetter stream = (fastInlineSatisfyE isAsciiLetter Errors.ExpectedAsciiLetter).Invoke stream
 
 // unicode is the default for letters and ascii the default for numbers
-let upper  stream = fastInlineSatisfyE isUpper  Errors.ExpectedUppercaseLetter stream
-let lower  stream = fastInlineSatisfyE isLower  Errors.ExpectedLowercaseLetter stream
-let letter stream = fastInlineSatisfyE isLetter Errors.ExpectedLetter          stream
+let upper  stream = (fastInlineSatisfyE isUpper  Errors.ExpectedUppercaseLetter).Invoke stream
+let lower  stream = (fastInlineSatisfyE isLower  Errors.ExpectedLowercaseLetter).Invoke stream
+let letter stream = (fastInlineSatisfyE isLetter Errors.ExpectedLetter         ).Invoke stream
 
-let digit  stream = fastInlineSatisfyE isDigit  Errors.ExpectedDecimalDigit     stream
-let hex    stream = fastInlineSatisfyE isHex    Errors.ExpectedHexadecimalDigit stream
-let octal  stream = fastInlineSatisfyE isOctal  Errors.ExpectedOctalDigit       stream
+let digit  stream = (fastInlineSatisfyE isDigit  Errors.ExpectedDecimalDigit    ).Invoke stream
+let hex<'u> = 
+   { new ParserX<_,'u>() with 
+      override __.Invoke(stream) =
+        (fastInlineSatisfyE isHex    Errors.ExpectedHexadecimalDigit).Invoke stream
+   }
+let octal  stream = (fastInlineSatisfyE isOctal  Errors.ExpectedOctalDigit      ).Invoke stream
 
-let tab stream = fastInlineSatisfyE ((=) '\t') Errors.ExpectedTab stream
+let tab stream = (fastInlineSatisfyE ((=) '\t') Errors.ExpectedTab).Invoke stream
 
-let spaces : Parser<unit,'u> =
-    fun stream ->
-        stream.SkipWhitespace() |> ignore
-        Reply(())
+let spaces<'u> : Parser<unit,'u> = new SpacesParser<'u>() :> Parser<unit,'u>
+  //{ new ParserX<_,_>() with 
+  //    override __.Invoke(stream) =
+  //      stream.SkipWhitespace() |> ignore
+  //      Reply(())
+  //}
 
-let spaces1 : Parser<unit,'u> =
-    fun stream ->
+let spaces1<'u> : Parser<unit,'u> =
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.SkipWhitespace() then Reply(())
         else Reply(Error, Errors.ExpectedWhitespace)
+  }
 
-let unicodeSpaces : Parser<unit,'u> =
-    fun stream ->
+let unicodeSpaces<'u> : Parser<unit,'u> =
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         stream.SkipUnicodeWhitespace() |> ignore
         Reply(())
+  }
 
-let unicodeSpaces1 : Parser<unit,'u> =
-    fun stream ->
+let unicodeSpaces1<'u> : Parser<unit,'u> =
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.SkipUnicodeWhitespace() then Reply(())
         else Reply(Error, Errors.ExpectedWhitespace)
+  }
 
-let eof : Parser<unit,'u>=
-    fun stream ->
+let eof<'u> : Parser<unit,'u>=
+  { new ParserX<_,_>() with 
+      override __.Invoke(stream) =
         if stream.IsEndOfStream then Reply(())
         else Reply(Error, Errors.ExpectedEndOfInput)
-
+  }
 
 // ------------------------
 // Parsing strings directly
@@ -421,14 +454,18 @@ let stringReturn s result : Parser<'a,'u> =
         checkNoNewlineOrEOSChar c0 0
         checkNoNewlineOrEOSChar c1 1
         let cs = TwoChars(c0, c1)
-        fun stream ->
-            if stream.Skip(cs) then Reply(result)
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if stream.Skip(cs) then Reply(result)
+                else Reply(Error, error)
+        }
     | _ ->
         checkStringContainsNoNewlineOrEOSChar s "pstring/skipString/stringReturn"
-        fun stream ->
-            if stream.Skip(s) then Reply(result)
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+              if stream.Skip(s) then Reply(result)
+              else Reply(Error, error)
+        }
 
 let pstring s    = stringReturn s s
 let skipString s = stringReturn s ()
@@ -437,11 +474,13 @@ let pstringCI s : Parser<string,'u> =
     checkStringContainsNoNewlineOrEOSChar s "pstringCI"
     let error = expectedStringCI s
     let cfs = foldCase s
-    fun stream ->
-        let index0 = stream.IndexToken
-        if stream.SkipCaseFolded(cfs) then
-             Reply(stream.ReadFrom(index0))
-        else Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let index0 = stream.IndexToken
+            if stream.SkipCaseFolded(cfs) then
+                 Reply(stream.ReadFrom(index0))
+            else Reply(Error, error)
+    }
 
 let stringCIReturn (s: string) result : Parser<'a,'u> =
     let error = expectedStringCI s
@@ -450,101 +489,118 @@ let stringCIReturn (s: string) result : Parser<'a,'u> =
         if not (isCertainlyNoNLOrEOS c) then
             match c with '\r'|'\n'|EOS -> newlineOrEOSCharInStringArg "skipStringCI/stringCIReturn"  s 0 | _ -> ()
         let cfc = Text.FoldCase(c)
-        fun stream ->
-            if stream.SkipCaseFolded(cfc) then Reply(result)
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+              if stream.SkipCaseFolded(cfc) then Reply(result)
+              else Reply(Error, error)
+        }
     else
         checkStringContainsNoNewlineOrEOSChar s "skipStringCI/stringCIReturn"
         let cfs = foldCase s
-        fun stream ->
-            if stream.SkipCaseFolded(cfs) then Reply(result)
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+              if stream.SkipCaseFolded(cfs) then Reply(result)
+              else Reply(Error, error)
+        }
 
 let skipStringCI s = stringCIReturn s ()
 
 
 let anyString n : Parser<string,'u> =
     let error = Errors.ExpectedAnySequenceOfNChars(n)
-    fun stream ->
-        let state = stream.State
-        let str = stream.ReadCharsOrNewlines(n, true)
-        if str.Length = n then Reply(str)
-        else
-            stream.BacktrackTo(state)
-            Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let state = stream.State
+          let str = stream.ReadCharsOrNewlines(n, true)
+          if str.Length = n then Reply(str)
+          else
+              stream.BacktrackTo(state)
+              Reply(Error, error)
+    }
 
 let skipAnyString n : Parser<unit,'u> =
     let error = Errors.ExpectedAnySequenceOfNChars(n)
-    fun stream ->
-        let state = stream.State
-        if stream.SkipCharsOrNewlines(n) = n then Reply(())
-        else
-            stream.BacktrackTo(state)
-            Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let state = stream.State
+          if stream.SkipCharsOrNewlines(n) = n then Reply(())
+          else
+              stream.BacktrackTo(state)
+              Reply(Error, error)
+    }
 
 let restOfLine skipNewline : Parser<_,_> =
-    fun stream ->
-        Reply(stream.ReadRestOfLine(skipNewline))
+    { new ParserX<_,_>() with override __.Invoke(stream) = Reply(stream.ReadRestOfLine(skipNewline)) }
 
 let skipRestOfLine skipNewline : Parser<_,_> =
-    fun stream ->
-         stream.SkipRestOfLine(skipNewline)
-         Reply(())
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+           stream.SkipRestOfLine(skipNewline)
+           Reply(())
+    }
 
 let charsTillString (s: string) skipString maxCount : Parser<string,'u> =
     checkStringContainsNoNewlineOrEOSChar s "charsTillString"
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     let error = Errors.CouldNotFindString(s)
-    fun stream ->
-        let mutable charsBeforeString = null
-        stream.SkipCharsOrNewlinesUntilString(s, maxCount, true, &charsBeforeString) |> ignore
-        if isNotNull charsBeforeString then
-            if skipString then stream.Skip(s.Length)
-            Reply(charsBeforeString)
-        else
-            Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let mutable charsBeforeString = null
+          stream.SkipCharsOrNewlinesUntilString(s, maxCount, true, &charsBeforeString) |> ignore
+          if isNotNull charsBeforeString then
+              if skipString then stream.Skip(s.Length)
+              Reply(charsBeforeString)
+          else
+              Reply(Error, error)
+    }
 
 let charsTillStringCI (s: string) skipString maxCount : Parser<string,'u> =
     checkStringContainsNoNewlineOrEOSChar s "charsTillStringCI"
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     let cfs = foldCase s
     let error = Errors.CouldNotFindCaseInsensitiveString(s)
-    fun stream ->
-        let mutable charsBeforeString = null
-        stream.SkipCharsOrNewlinesUntilCaseFoldedString(cfs, maxCount, true, &charsBeforeString) |> ignore
-        if isNotNull charsBeforeString then
-            if skipString then stream.Skip(s.Length)
-            Reply(charsBeforeString)
-        else
-            Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let mutable charsBeforeString = null
+          stream.SkipCharsOrNewlinesUntilCaseFoldedString(cfs, maxCount, true, &charsBeforeString) |> ignore
+          if isNotNull charsBeforeString then
+              if skipString then stream.Skip(s.Length)
+              Reply(charsBeforeString)
+          else
+              Reply(Error, error)
+    }
 
 
 let skipCharsTillString (s: string) skipString maxCount : Parser<unit,'u> =
     checkStringContainsNoNewlineOrEOSChar s "skipCharsTillString"
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     let error = Errors.CouldNotFindString(s)
-    fun stream ->
-        let mutable foundString = false
-        stream.SkipCharsOrNewlinesUntilString(s, maxCount, &foundString) |> ignore
-        if foundString then
-            if skipString then stream.Skip(s.Length)
-            Reply(())
-        else
-            Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let mutable foundString = false
+          stream.SkipCharsOrNewlinesUntilString(s, maxCount, &foundString) |> ignore
+          if foundString then
+              if skipString then stream.Skip(s.Length)
+              Reply(())
+          else
+              Reply(Error, error)
+    }
 
 let skipCharsTillStringCI (s: string) skipString maxCount : Parser<unit,'u> =
     checkStringContainsNoNewlineOrEOSChar s "skipCharsTillStringCI"
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     let cfs = foldCase s
     let error = Errors.CouldNotFindCaseInsensitiveString(s)
-    fun stream ->
-        let mutable foundString = false
-        stream.SkipCharsOrNewlinesUntilCaseFoldedString(cfs, maxCount, &foundString) |> ignore
-        if foundString then
-            if skipString then stream.Skip(s.Length)
-            Reply(())
-        else
-            Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let mutable foundString = false
+          stream.SkipCharsOrNewlinesUntilCaseFoldedString(cfs, maxCount, &foundString) |> ignore
+          if foundString then
+              if skipString then stream.Skip(s.Length)
+              Reply(())
+          else
+              Reply(Error, error)
+    }
 
 let
 #if NOINLINE
@@ -552,21 +608,24 @@ let
     inline
 #endif
            internal manySatisfyImpl require1 (f1: char -> bool) (f: char -> bool) error : Parser<string,'u> =
-    fun stream ->
-        let str = stream.ReadCharsOrNewlinesWhile(f1, f, true)
-        if not require1 || str.Length <> 0 then Reply(str)
-        else Reply(Error, error)
-
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let str = stream.ReadCharsOrNewlinesWhile(f1, f, true)
+          if not require1 || str.Length <> 0 then Reply(str)
+          else Reply(Error, error)
+      }
 let
 #if NOINLINE
 #else
     inline
 #endif
            internal skipManySatisfyImpl require1 (f1: char -> bool) (f: char -> bool) error : Parser<unit,'u> =
-    fun stream ->
-        let n = stream.SkipCharsOrNewlinesWhile(f1, f)
-        if not require1 || n <> 0 then Reply(())
-        else Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let n = stream.SkipCharsOrNewlinesWhile(f1, f)
+          if not require1 || n <> 0 then Reply(())
+          else Reply(Error, error)
+    }
 
 let manySatisfy2   f1 f       = manySatisfyImpl false f1 f NoErrorMessages
 let many1Satisfy2  f1 f       = manySatisfyImpl true  f1 f NoErrorMessages
@@ -588,25 +647,32 @@ let skipMany1SatisfyL f label = skipMany1Satisfy2L f f label
 let internal manyMinMaxSatisfy2E minCount maxCount f1 f error : Parser<string,'u> =
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     if minCount > 0 then
-        fun stream ->
-            let str = stream.ReadCharsOrNewlinesWhile(f1, f, minCount, maxCount, true)
-            if str.Length <> 0 then Reply(str)
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+              let str = stream.ReadCharsOrNewlinesWhile(f1, f, minCount, maxCount, true)
+              if str.Length <> 0 then Reply(str)
+              else Reply(Error, error)
+        }
     else
-        fun stream ->
-            Reply(stream.ReadCharsOrNewlinesWhile(f1, f, 0, maxCount, true))
-
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+              Reply(stream.ReadCharsOrNewlinesWhile(f1, f, 0, maxCount, true))
+        }
 let internal skipManyMinMaxSatisfy2E minCount maxCount f1 f error : Parser<unit,'u> =
     if maxCount < 0 then raise (System.ArgumentOutOfRangeException("maxCount", "maxCount is negative."))
     if minCount > 0 then
-        fun stream ->
-            let n = stream.SkipCharsOrNewlinesWhile(f1, f, minCount, maxCount)
-            if n <> 0 then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+              let n = stream.SkipCharsOrNewlinesWhile(f1, f, minCount, maxCount)
+              if n <> 0 then Reply(())
+              else Reply(Error, error)
+        }
     else
-        fun stream ->
-            stream.SkipCharsOrNewlinesWhile(f1, f, 0, maxCount) |> ignore
-            Reply(())
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                stream.SkipCharsOrNewlinesWhile(f1, f, 0, maxCount) |> ignore
+                Reply(())
+        }
 
 let manyMinMaxSatisfy   minCount maxCount    f       = manyMinMaxSatisfy2E minCount maxCount f  f NoErrorMessages
 let manyMinMaxSatisfyL  minCount maxCount    f label = manyMinMaxSatisfy2E minCount maxCount f  f (expected label)
@@ -622,20 +688,22 @@ let skipManyMinMaxSatisfy2L minCount maxCount f1 f label = skipManyMinMaxSatisfy
 let internal regexE pattern error : Parser<string,'u> =
     let regex = new Regex("\\A" + pattern, RegexOptions.Multiline |||
                                            RegexOptions.ExplicitCapture)
-    fun stream ->
-        let m = stream.Match(regex)
-        if m.Success then
-            let str = m.Value
-            if findNewlineOrEOSChar str < 0 then
-                if str.Length <> 0 then stream.Skip(str.Length)
-                Reply(str)
-            else
-                let nStr = normalizeNewlines str
-                let mutable nSkippedChars = 0
-                let n = stream.SkipCharsOrNewlines(nStr.Length)
-                if n = nStr.Length then Reply(nStr)
-                else Reply(FatalError, messageError "Internal error in the regex parser. Please report this error to fparsec@quanttec.com.")
-        else Reply(Error, error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let m = stream.Match(regex)
+            if m.Success then
+                let str = m.Value
+                if findNewlineOrEOSChar str < 0 then
+                    if str.Length <> 0 then stream.Skip(str.Length)
+                    Reply(str)
+                else
+                    let nStr = normalizeNewlines str
+                    let mutable nSkippedChars = 0
+                    let n = stream.SkipCharsOrNewlines(nStr.Length)
+                    if n = nStr.Length then Reply(nStr)
+                    else Reply(FatalError, messageError "Internal error in the regex parser. Please report this error to fparsec@quanttec.com.")
+            else Reply(Error, error)
+        }
 
 let regex  pattern       = regexE pattern (Errors.ExpectedStringMatchingRegex(pattern))
 let regexL pattern label = regexE pattern (expected label)
@@ -720,34 +788,35 @@ let identifier (identifierOptions: IdentifierOptions) : Parser<string, _> =
     let preCheck  = identifierOptions.PreCheck
     let expectedIdentifierError = identifierOptions.ExpectedIdentifierError
     let invalidCharError = identifierOptions.InvalidCharError
-    fun stream ->
-        let str = stream.ReadCharsOrNewlinesWhile(preCheck1, preCheck, true)
-        if str.Length <> 0 then
-            let mutable errorPos = 0
-            let nstr = validator.ValidateAndNormalize(str, &errorPos)
-            if isNotNull nstr then Reply(nstr)
-            else
-                stream.Skip(errorPos - str.Length)
-                Reply(FatalError, invalidCharError)
-        else
-            Reply(Error, expectedIdentifierError)
-
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          let str = stream.ReadCharsOrNewlinesWhile(preCheck1, preCheck, true)
+          if str.Length <> 0 then
+              let mutable errorPos = 0
+              let nstr = validator.ValidateAndNormalize(str, &errorPos)
+              if isNotNull nstr then Reply(nstr)
+              else
+                  stream.Skip(errorPos - str.Length)
+                  Reply(FatalError, invalidCharError)
+          else
+              Reply(Error, expectedIdentifierError)
+    }
 // ----------------------------------------------
 // Parsing strings with the help of other parsers
 // ----------------------------------------------
 
-let manyChars2 p1 p = ManyChars(p1, p).AsFSharpFunc
+let manyChars2 p1 p = ManyChars(p1, p) //.AsFSharpFunc
 let manyChars     p = manyChars2 p p
 
-let many1Chars2 p1 p = Many1Chars(p1, p).AsFSharpFunc
+let many1Chars2 p1 p = Many1Chars(p1, p) //.AsFSharpFunc
 let many1Chars     p = many1Chars2 p p
 
-let manyCharsTillApply2 p1 p endp f = ManyCharsTill(p1, p, endp, f).AsFSharpFunc
+let manyCharsTillApply2 p1 p endp f = ManyCharsTill(p1, p, endp, f) //.AsFSharpFunc
 let manyCharsTillApply     p endp f = manyCharsTillApply2 p p endp f
 let manyCharsTill2      p1 p endp   = manyCharsTillApply2 p1 p endp (fun str _ -> str)
 let manyCharsTill          p endp   = manyCharsTill2 p p endp
 
-let many1CharsTillApply2 p1 p endp f = Many1CharsTill(p1, p, endp, f).AsFSharpFunc
+let many1CharsTillApply2 p1 p endp f = Many1CharsTill(p1, p, endp, f) // .AsFSharpFunc
 let many1CharsTillApply     p endp f = many1CharsTillApply2 p p endp f
 let many1CharsTill2      p1 p endp   = many1CharsTillApply2 p1 p endp (fun str _ -> str)
 let many1CharsTill          p endp   = many1CharsTill2 p p endp
@@ -760,60 +829,61 @@ let
     inline
 #endif
            internal manyStringsImpl require1 (p1: Parser<string,'u>) (p: Parser<string,'u>) : Parser<string,'u> =
-    fun stream ->
-        let mutable stateTag = stream.StateTag
-        let mutable reply = p1 stream
-        if reply.Status = Ok then
-            let result1 = reply.Result
-            let mutable error  = reply.Error
-            stateTag <- stream.StateTag
-            reply <- p stream
-            if reply.Status <> Ok then reply.Result <- result1
-            else
-                let result2 = reply.Result
-                error <- reply.Error
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let mutable stateTag = stream.StateTag
+            let mutable reply = p1.Invoke stream
+            if reply.Status = Ok then
+                let result1 = reply.Result
+                let mutable error  = reply.Error
                 stateTag <- stream.StateTag
-                reply <- p stream
-                if reply.Status <> Ok then reply.Result <- result1 + result2
+                reply <- p.Invoke stream
+                if reply.Status <> Ok then reply.Result <- result1
                 else
-                    let result3 = reply.Result
+                    let result2 = reply.Result
                     error <- reply.Error
                     stateTag <- stream.StateTag
-                    reply <- p stream
-                    if reply.Status <> Ok then reply.Result <- concat3 result1 result2 result3
+                    reply <- p.Invoke stream
+                    if reply.Status <> Ok then reply.Result <- result1 + result2
                     else
-                        let result4 = reply.Result
+                        let result3 = reply.Result
                         error <- reply.Error
                         stateTag <- stream.StateTag
-                        reply <- p stream
-                        if reply.Status <> Ok then reply.Result <- concat4 result1 result2 result3 result4
+                        reply <- p.Invoke stream
+                        if reply.Status <> Ok then reply.Result <- concat3 result1 result2 result3
                         else
-                            let n = 2*(result1.Length + result2.Length + result3.Length + result4.Length) + reply.Result.Length
-                            let sb = new StringBuilder(n)
-                            sb.Append(result1).Append(result2).Append(result3).Append(result4).Append(reply.Result) |> ignore
+                            let result4 = reply.Result
                             error <- reply.Error
                             stateTag <- stream.StateTag
-                            reply <- p stream
-                            while reply.Status = Ok do
-                                if stateTag = stream.StateTag then
-                                    raiseInfiniteLoopException "manyStrings" stream
+                            reply <- p.Invoke stream
+                            if reply.Status <> Ok then reply.Result <- concat4 result1 result2 result3 result4
+                            else
+                                let n = 2*(result1.Length + result2.Length + result3.Length + result4.Length) + reply.Result.Length
+                                let sb = new StringBuilder(n)
+                                sb.Append(result1).Append(result2).Append(result3).Append(result4).Append(reply.Result) |> ignore
                                 error <- reply.Error
-                                sb.Append(reply.Result) |> ignore
                                 stateTag <- stream.StateTag
-                                reply <- p stream
-                            reply.Result <- sb.ToString()
-            // We assume that the string parser changes the state when it succeeds,
-            // so we don't need to merge more than 2 error message lists.
-            if stateTag = stream.StateTag then
-                if reply.Status = Error then
-                    reply.Status <- Ok
-                if isNotNull error then
-                    reply.Error <- mergeErrors error reply.Error
-        elif not require1 && reply.Status = Error && stateTag = stream.StateTag then
-            reply.Status <- Ok
-            reply.Result <- ""
-        reply
-
+                                reply <- p.Invoke stream
+                                while reply.Status = Ok do
+                                    if stateTag = stream.StateTag then
+                                        raiseInfiniteLoopException "manyStrings" stream
+                                    error <- reply.Error
+                                    sb.Append(reply.Result) |> ignore
+                                    stateTag <- stream.StateTag
+                                    reply <- p.Invoke stream
+                                reply.Result <- sb.ToString()
+                // We assume that the string parser changes the state when it succeeds,
+                // so we don't need to merge more than 2 error message lists.
+                if stateTag = stream.StateTag then
+                    if reply.Status = Error then
+                        reply.Status <- Ok
+                    if isNotNull error then
+                        reply.Error <- mergeErrors error reply.Error
+            elif not require1 && reply.Status = Error && stateTag = stream.StateTag then
+                reply.Status <- Ok
+                reply.Result <- ""
+            reply
+      }
 let manyStrings2 p1 p = manyStringsImpl false p1 p
 let manyStrings p = manyStrings2 p p
 let many1Strings2 p1 p = manyStringsImpl true p1 p
@@ -825,112 +895,117 @@ let
     inline
 #endif
            internal stringsSepByImpl require1 (p: Parser<string,'u>) (sep: Parser<string,'u>) : Parser<string,'u> =
-    fun stream ->
-        let mutable stateTag = stream.StateTag
-        let mutable reply = p stream
-        if reply.Status = Ok then
-            let result1 = reply.Result
-            let mutable error = reply.Error
-            stateTag <- stream.StateTag
-            reply <- sep stream
-            if reply.Status <> Ok then
-                if stateTag = stream.StateTag then
-                    if reply.Status = Error then
-                        reply.Status <- Ok
-                        reply.Result <- result1
-                    if isNotNull error then
-                        reply.Error <- mergeErrors error reply.Error
-            else
-                // We assume that at least one of the parsers sep and p consume
-                // input when both are called consecutively and succeed. This
-                // way we only have to merge a maximum of 3 error message lists.
-                let mutable result = null
-                let mutable error0 = error
-                let mutable stateTag0 = stateTag
-                let result2 = reply.Result
-                error <- reply.Error
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let mutable stateTag = stream.StateTag
+            let mutable reply = p.Invoke stream
+            if reply.Status = Ok then
+                let result1 = reply.Result
+                let mutable error = reply.Error
                 stateTag <- stream.StateTag
-                reply <- p stream
-                if reply.Status = Ok then
-                    let result3 = reply.Result
-                    error0 <- error
-                    stateTag0 <- stateTag
+                reply <- sep.Invoke stream
+                if reply.Status <> Ok then
+                    if stateTag = stream.StateTag then
+                        if reply.Status = Error then
+                            reply.Status <- Ok
+                            reply.Result <- result1
+                        if isNotNull error then
+                            reply.Error <- mergeErrors error reply.Error
+                else
+                    // We assume that at least one of the parsers sep and p consume
+                    // input when both are called consecutively and succeed. This
+                    // way we only have to merge a maximum of 3 error message lists.
+                    let mutable result = null
+                    let mutable error0 = error
+                    let mutable stateTag0 = stateTag
+                    let result2 = reply.Result
                     error <- reply.Error
                     stateTag <- stream.StateTag
-                    reply <- sep stream
-                    if reply.Status <> Ok then result <- concat3 result1 result2 result3
-                    else
-                        let result4 = reply.Result
+                    reply <- p.Invoke stream
+                    if reply.Status = Ok then
+                        let result3 = reply.Result
                         error0 <- error
                         stateTag0 <- stateTag
                         error <- reply.Error
                         stateTag <- stream.StateTag
-                        reply <- p stream
-                        if reply.Status = Ok then
-                            let n = 2*(result1.Length + result2.Length + result3.Length + result4.Length) + reply.Result.Length
-                            let sb = new StringBuilder(n)
-                            sb.Append(result1).Append(result2).Append(result3).Append(result4) |> ignore
-                            while reply.Status = Ok do
-                                sb.Append(reply.Result) |> ignore
-                                error0 <- error
-                                stateTag0 <- stateTag
-                                error <- reply.Error
-                                stateTag <- stream.StateTag
-                                reply <- sep stream
-                                if reply.Status <> Ok then result <- sb.ToString()
-                                else
+                        reply <- sep.Invoke stream
+                        if reply.Status <> Ok then result <- concat3 result1 result2 result3
+                        else
+                            let result4 = reply.Result
+                            error0 <- error
+                            stateTag0 <- stateTag
+                            error <- reply.Error
+                            stateTag <- stream.StateTag
+                            reply <- p.Invoke stream
+                            if reply.Status = Ok then
+                                let n = 2*(result1.Length + result2.Length + result3.Length + result4.Length) + reply.Result.Length
+                                let sb = new StringBuilder(n)
+                                sb.Append(result1).Append(result2).Append(result3).Append(result4) |> ignore
+                                while reply.Status = Ok do
                                     sb.Append(reply.Result) |> ignore
-                                    if stateTag0 = stream.StateTag then
-                                        raiseInfiniteLoopException "stringsSepBy" stream
                                     error0 <- error
                                     stateTag0 <- stateTag
                                     error <- reply.Error
                                     stateTag <- stream.StateTag
-                                    reply <- p stream
-                if stateTag = stream.StateTag then
-                    if isNotNull result && reply.Status = Error then
-                        reply.Status <- Ok
-                        reply.Result <- result
-                    error <- mergeErrors error reply.Error
-                    if stateTag0 = stateTag then
-                        error <- mergeErrors error0 error
-                    reply.Error <- error
-        elif not require1 && reply.Status = Error && stateTag = stream.StateTag then
-            reply.Status <- Ok
-            reply.Result <- ""
-        reply
+                                    reply <- sep.Invoke stream
+                                    if reply.Status <> Ok then result <- sb.ToString()
+                                    else
+                                        sb.Append(reply.Result) |> ignore
+                                        if stateTag0 = stream.StateTag then
+                                            raiseInfiniteLoopException "stringsSepBy" stream
+                                        error0 <- error
+                                        stateTag0 <- stateTag
+                                        error <- reply.Error
+                                        stateTag <- stream.StateTag
+                                        reply <- p.Invoke stream
+                    if stateTag = stream.StateTag then
+                        if isNotNull result && reply.Status = Error then
+                            reply.Status <- Ok
+                            reply.Result <- result
+                        error <- mergeErrors error reply.Error
+                        if stateTag0 = stateTag then
+                            error <- mergeErrors error0 error
+                        reply.Error <- error
+            elif not require1 && reply.Status = Error && stateTag = stream.StateTag then
+                reply.Status <- Ok
+                reply.Result <- ""
+            reply
+      }
 
 let stringsSepBy  p sep = stringsSepByImpl false p sep
 let stringsSepBy1 p sep = stringsSepByImpl true  p sep
 
 let skipped (p: Parser<unit,'u>) : Parser<string,'u> =
-    fun stream ->
-        let index0 = stream.IndexToken
-        let line0 = stream.Line
-        let reply = p stream
-        if reply.Status = Ok then
-            let str = stream.ReadFrom(index0)
-            let nstr = if line0 = stream.Line then str
-                       else Text.NormalizeNewlines(str)
-            Reply(Ok, nstr, reply.Error)
-        else
-            Reply(reply.Status, reply.Error)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let index0 = stream.IndexToken
+            let line0 = stream.Line
+            let reply = p.Invoke stream
+            if reply.Status = Ok then
+                let str = stream.ReadFrom(index0)
+                let nstr = if line0 = stream.Line then str
+                           else Text.NormalizeNewlines(str)
+                Reply(Ok, nstr, reply.Error)
+            else
+                Reply(reply.Status, reply.Error)
+    }
 
 let withSkippedString (f: string -> 'a -> 'b) (p: Parser<'a,'u>) : Parser<'b,'u> =
     let optF = OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)
-    fun stream ->
-        let index0 = stream.IndexToken
-        let line0 = stream.Line
-        let reply = p stream
-        if reply.Status = Ok then
-            let str = stream.ReadFrom(index0)
-            let nstr = if line0 = stream.Line then str
-                       else Text.NormalizeNewlines(str)
-            let result = optF.Invoke(nstr, reply.Result)
-            Reply(Ok, result, reply.Error)
-        else
-            Reply(reply.Status, reply.Error)
-
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let index0 = stream.IndexToken
+            let line0 = stream.Line
+            let reply = p.Invoke stream
+            if reply.Status = Ok then
+                let str = stream.ReadFrom(index0)
+                let nstr = if line0 = stream.Line then str
+                           else Text.NormalizeNewlines(str)
+                let result = optF.Invoke(nstr, reply.Result)
+                Reply(Ok, result, reply.Error)
+            else
+                Reply(reply.Status, reply.Error)
+    }
 // ---------------
 // Parsing numbers
 // ---------------
@@ -1182,31 +1257,33 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
               stream.StateTag <- stateTag
            Reply(Error, errorInCaseNoLiteralFound)
 
-let numberLiteral opt label = numberLiteralE opt (expected label)
+// let numberLiteral opt label = numberLiteralE opt (expected label)
 
-let pfloat : Parser<float,'u> =
-    fun stream ->
-        let reply = numberLiteralE NLO.DefaultFloat Errors.ExpectedFloatingPointNumber stream
-        if reply.Status = Ok then
-            let nl = reply.Result
-            try
-                let d = if nl.IsDecimal then
-                            System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
-                        elif nl.IsHexadecimal then
-                            floatOfHexString nl.String
-                        elif nl.IsInfinity then
-                            if nl.HasMinusSign then System.Double.NegativeInfinity else System.Double.PositiveInfinity
-                        else
-                            System.Double.NaN
-                Reply(d)
-            with e ->
-                let error = if   (e :? System.OverflowException) then Errors.NumberOutsideOfDoubleRange
-                            elif (e :? System.FormatException) then messageError "The floating-point number has an invalid format (this error is unexpected, please report this error message to fparsec@quanttec.com)."
-                            else reraise()
-                stream.Skip(-nl.String.Length)
-                Reply(FatalError, error)
-        else
-            Reply(reply.Status, reply.Error)
+let pfloat<'u> : Parser<float,'u> =
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let reply = numberLiteralE NLO.DefaultFloat Errors.ExpectedFloatingPointNumber stream
+            if reply.Status = Ok then
+                let nl = reply.Result
+                try
+                    let d = if nl.IsDecimal then
+                                System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
+                            elif nl.IsHexadecimal then
+                                floatOfHexString nl.String
+                            elif nl.IsInfinity then
+                                if nl.HasMinusSign then System.Double.NegativeInfinity else System.Double.PositiveInfinity
+                            else
+                                System.Double.NaN
+                    Reply(d)
+                with e ->
+                    let error = if   (e :? System.OverflowException) then Errors.NumberOutsideOfDoubleRange
+                                elif (e :? System.FormatException) then messageError "The floating-point number has an invalid format (this error is unexpected, please report this error message to fparsec@quanttec.com)."
+                                else reraise()
+                    stream.Skip(-nl.String.Length)
+                    Reply(FatalError, error)
+            else
+                Reply(reply.Status, reply.Error)
+    }
 
 let internal parseUInt64 (c0: char) (stream: CharStream<'u>) (status: ReplyStatus byref) (error: ErrorMessageList byref) =
     Debug.Assert(isDigit c0 && (status = Ok))
@@ -1483,77 +1560,98 @@ let puint8  stream = pint NumberLiteralOptions.DefaultUnsignedInteger 0xffu     
 // Conditional parsing
 // -------------------
 
-let notFollowedByEof : Parser<unit,'u> =
-    fun stream ->
-        if not (stream.IsEndOfStream) then Reply(())
-        else Reply(Error, Errors.UnexpectedEndOfInput)
+let notFollowedByEof<'u> : Parser<unit,'u> =
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          if not (stream.IsEndOfStream) then Reply(())
+          else Reply(Error, Errors.UnexpectedEndOfInput)
+    }
 
-let followedByNewline : Parser<unit,'u> =
-    fun stream ->
-        match stream.Peek() with
-        |'\r' | '\n' -> Reply(())
-        | _ -> Reply(Error, Errors.ExpectedNewline)
+let followedByNewline<'u> : Parser<unit,'u> =
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          match stream.Peek() with
+          |'\r' | '\n' -> Reply(())
+          | _ -> Reply(Error, Errors.ExpectedNewline)
+    }
 
-let notFollowedByNewline : Parser<unit,'u> =
-    fun stream ->
-        match stream.Peek() with
-        |'\r' | '\n' -> Reply(Error, Errors.UnexpectedNewline)
-        | _ -> Reply(())
+let notFollowedByNewline<'u> : Parser<unit,'u> =
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+          match stream.Peek() with
+          |'\r' | '\n' -> Reply(Error, Errors.UnexpectedNewline)
+          | _ -> Reply(())
+    }
 
 let followedByString (str: string) : Parser<unit,'u> =
     checkStringContainsNoNewlineOrEOSChar str "followedByString"
     let error = expectedString str
     if str.Length = 1 then
         let chr = str.[0]
-        fun stream ->
-            if stream.Match(chr) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if stream.Match(chr) then Reply(())
+                else Reply(Error, error)
+        }
     else
-        fun stream ->
-            if stream.Match(str) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if stream.Match(str) then Reply(())
+                else Reply(Error, error)
+        }
 
 let followedByStringCI str : Parser<unit,'u> =
     checkStringContainsNoNewlineOrEOSChar str "followedByStringCI"
     let error = expectedStringCI str
     if str.Length = 1 then
         let cfChr = Text.FoldCase(str.[0])
-        fun stream ->
-            if stream.MatchCaseFolded(cfChr) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if stream.MatchCaseFolded(cfChr) then Reply(())
+                else Reply(Error, error)
+        }
     else
         let cfStr = foldCase str
-        fun stream ->
-            if stream.MatchCaseFolded(cfStr) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if stream.MatchCaseFolded(cfStr) then Reply(())
+                else Reply(Error, error)
+        }
 
 let notFollowedByString str : Parser<unit,'u> =
     checkStringContainsNoNewlineOrEOSChar str "notFollowedByString"
     let error = unexpectedString str
     if str.Length = 1 then
         let chr = str.[0]
-        fun stream ->
-            if not (stream.Match(chr)) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if not (stream.Match(chr)) then Reply(())
+                else Reply(Error, error)
+        }
     else
-        fun stream ->
-            if not (stream.Match(str)) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if not (stream.Match(str)) then Reply(())
+                else Reply(Error, error)
+        }
 
 let notFollowedByStringCI str : Parser<unit,'u> =
     checkStringContainsNoNewlineOrEOSChar str "notFollowedByStringCI"
     let error = unexpectedStringCI str
     if str.Length = 1 then
         let cfChr = Text.FoldCase(str.[0])
-        fun stream ->
-            if not (stream.MatchCaseFolded(cfChr)) then Reply(())
-            else Reply(Error, error)
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if not (stream.MatchCaseFolded(cfChr)) then Reply(())
+                else Reply(Error, error)
+        }
     else
         let cfStr = foldCase str
-        fun stream ->
-            if not (stream.MatchCaseFolded(cfStr)) then Reply(())
-            else Reply(Error, error)
-
+        { new ParserX<_,_>() with 
+            override __.Invoke(stream) =
+                if not (stream.MatchCaseFolded(cfStr)) then Reply(())
+                else Reply(Error, error)
+        }
 
 let inline private charDoesSatisfy f c =
     match c with
@@ -1566,57 +1664,69 @@ let inline private charDoesSatisfyNot f c =
     | _ -> if not (f (if c <> '\r' then c else '\n')) then Ok else Error
 
 let previousCharSatisfies f : Parser<unit,'u> =
-    fun stream ->
-        let status = charDoesSatisfy f (stream.Peek(-1))
-        Reply(status, (), NoErrorMessages)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let status = charDoesSatisfy f (stream.Peek(-1))
+            Reply(status, (), NoErrorMessages)
+    }
 
 let previousCharSatisfiesNot f : Parser<unit,'u> =
-    fun stream ->
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
         let status = charDoesSatisfyNot f (stream.Peek(-1))
         Reply(status, (), NoErrorMessages)
+    }
 
 let nextCharSatisfies f : Parser<unit,'u> =
-    fun stream ->
-        let status = charDoesSatisfy f (stream.Peek())
-        Reply(status, (), NoErrorMessages)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let status = charDoesSatisfy f (stream.Peek())
+            Reply(status, (), NoErrorMessages)
+    }
 
 let nextCharSatisfiesNot f : Parser<unit,'u> =
-    fun stream ->
-        let status = charDoesSatisfyNot f (stream.Peek())
-        Reply(status, (), NoErrorMessages)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let status = charDoesSatisfyNot f (stream.Peek())
+            Reply(status, (), NoErrorMessages)
+    }
 
 let next2CharsSatisfy f : Parser<unit,'u> =
     let optF = OptimizedClosures.FSharpFunc<char, char, bool>.Adapt(f)
-    fun stream ->
-        let cs = stream.Peek2()
-        let status = match cs.Char0, cs.Char1 with
-                     | _, EOS
-                     | EOS, _ -> Error
-                     | '\r', '\n' ->
-                         match stream.Peek(2u) with
-                         | EOS -> Error
-                         | c1 -> if optF.Invoke('\n', if c1 <> '\r' then c1 else '\n')
-                                 then Ok else Error
-                     | c0, c1 ->
-                         if optF.Invoke((if c0 <> '\r' then c0 else '\n'),
-                                        (if c1 <> '\r' then c1 else '\n'))
-                         then Ok else Error
-        Reply(status, (), NoErrorMessages)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let cs = stream.Peek2()
+            let status = match cs.Char0, cs.Char1 with
+                         | _, EOS
+                         | EOS, _ -> Error
+                         | '\r', '\n' ->
+                             match stream.Peek(2u) with
+                             | EOS -> Error
+                             | c1 -> if optF.Invoke('\n', if c1 <> '\r' then c1 else '\n')
+                                     then Ok else Error
+                         | c0, c1 ->
+                             if optF.Invoke((if c0 <> '\r' then c0 else '\n'),
+                                            (if c1 <> '\r' then c1 else '\n'))
+                             then Ok else Error
+            Reply(status, (), NoErrorMessages)
+    }
 
 let next2CharsSatisfyNot f : Parser<unit,'u> =
     let optF = OptimizedClosures.FSharpFunc<char, char, bool>.Adapt(f)
-    fun stream ->
-        let cs = stream.Peek2()
-        let status = match cs.Char0, cs.Char1 with
-                     | _, EOS
-                     | EOS, _ -> Ok
-                     | '\r', '\n' ->
-                         match stream.Peek(2u) with
-                         | EOS -> Ok
-                         | c1 -> if not (optF.Invoke('\n', if c1 <> '\r' then c1 else '\n'))
-                                 then Ok else Error
-                     | c0, c1 ->
-                         if not (optF.Invoke((if c0 <> '\r' then c0 else '\n'),
-                                             (if c1 <> '\r' then c1 else '\n')))
-                         then Ok else Error
-        Reply(status, (), NoErrorMessages)
+    { new ParserX<_,_>() with 
+        override __.Invoke(stream) =
+            let cs = stream.Peek2()
+            let status = match cs.Char0, cs.Char1 with
+                         | _, EOS
+                         | EOS, _ -> Ok
+                         | '\r', '\n' ->
+                             match stream.Peek(2u) with
+                             | EOS -> Ok
+                             | c1 -> if not (optF.Invoke('\n', if c1 <> '\r' then c1 else '\n'))
+                                     then Ok else Error
+                         | c0, c1 ->
+                             if not (optF.Invoke((if c0 <> '\r' then c0 else '\n'),
+                                                 (if c1 <> '\r' then c1 else '\n')))
+                             then Ok else Error
+            Reply(status, (), NoErrorMessages)
+    }

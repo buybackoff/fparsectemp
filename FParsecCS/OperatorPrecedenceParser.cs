@@ -28,10 +28,10 @@ namespace FParsec
         public OperatorType Type { get; private set; }
 
         public string String { get; protected set; }
-        internal FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> AfterStringParser { get; private set; }
+        internal ParserX<TAfterString, TUserState> AfterStringParser { get; private set; }
 
         public string TernaryRightString { get; protected set; }
-        internal FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> AfterTernaryRightStringParser { get; private set; }
+        internal ParserX<TAfterString, TUserState> AfterTernaryRightStringParser { get; private set; }
         public bool IsTernary { get { return TernaryRightString != null; } }
 
         public int Precedence { get; protected set; }
@@ -46,11 +46,11 @@ namespace FParsec
         {
         }
 
-        static readonly internal Operator<TTerm, TAfterString, TUserState> ZeroPrecedenceOperator = new Operator<TTerm, TAfterString, TUserState> { Type = OperatorType.Prefix };
+        internal static readonly Operator<TTerm, TAfterString, TUserState> ZeroPrecedenceOperator = new Operator<TTerm, TAfterString, TUserState> { Type = OperatorType.Prefix };
 
         private Operator(OperatorType type,
                          string operatorString,
-                         FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                         ParserX<TAfterString, TUserState> afterStringParser,
                          int precedence)
         {
             Debug.Assert(type >= OperatorType.Infix && type <= OperatorType.Postfix);
@@ -64,7 +64,7 @@ namespace FParsec
         }
 
         internal Operator(string operatorString,
-                          FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                          ParserX<TAfterString, TUserState> afterStringParser,
                           int precedence,
                           Associativity associativity,
                           FSharpFunc<TAfterString, FSharpFunc<TTerm, FSharpFunc<TTerm, TTerm>>> mapping)
@@ -79,7 +79,7 @@ namespace FParsec
 
         internal Operator(OperatorType type,
                           string operatorString,
-                          FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                          ParserX<TAfterString, TUserState> afterStringParser,
                           int precedence,
                           bool isAssociative,
                           FSharpFunc<TAfterString, FSharpFunc<TTerm, TTerm>> mapping)
@@ -93,9 +93,9 @@ namespace FParsec
         }
 
         internal Operator(string leftString,
-                          FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterLeftStringParser,
+                          ParserX<TAfterString, TUserState> afterLeftStringParser,
                           string rightString,
-                          FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterRightStringParser,
+                          ParserX<TAfterString, TUserState> afterRightStringParser,
                           int precedence,
                           Associativity associativity,
                           FSharpFunc<TAfterString, FSharpFunc<TAfterString, FSharpFunc<TTerm, FSharpFunc<TTerm, FSharpFunc<TTerm, TTerm>>>>> mapping)
@@ -171,7 +171,7 @@ namespace FParsec
     public sealed class InfixOperator<TTerm, TAfterString, TUserState> : Operator<TTerm, TAfterString, TUserState>
     {
         public InfixOperator(string operatorString,
-                             FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                             ParserX<TAfterString, TUserState> afterStringParser,
                              int precedence,
                              Associativity associativity,
                              FSharpFunc<TTerm, FSharpFunc<TTerm, TTerm>> mapping)
@@ -180,7 +180,7 @@ namespace FParsec
         { }
 
         public InfixOperator(string operatorString,
-                             FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                             ParserX<TAfterString, TUserState> afterStringParser,
                              int precedence,
                              Associativity associativity,
                              Unit dummy, // disambiguates overloads in F#
@@ -191,7 +191,7 @@ namespace FParsec
     public sealed class PrefixOperator<TTerm, TAfterString, TUserState> : Operator<TTerm, TAfterString, TUserState>
     {
         public PrefixOperator(string operatorString,
-                              FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                              ParserX<TAfterString, TUserState> afterStringParser,
                               int precedence,
                               bool isAssociative,
                               FSharpFunc<TTerm, TTerm> mapping)
@@ -200,7 +200,7 @@ namespace FParsec
         { }
 
         public PrefixOperator(string operatorString,
-                              FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                              ParserX<TAfterString, TUserState> afterStringParser,
                               int precedence,
                               bool isAssociative,
                               Unit dummy, // disambiguates overloads in F#
@@ -211,7 +211,7 @@ namespace FParsec
     public sealed class PostfixOperator<TTerm, TAfterString, TUserState> : Operator<TTerm, TAfterString, TUserState>
     {
         public PostfixOperator(string operatorString,
-                               FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                               ParserX<TAfterString, TUserState> afterStringParser,
                                int precedence,
                                bool isAssociative,
                                FSharpFunc<TTerm, TTerm> mapping)
@@ -220,7 +220,7 @@ namespace FParsec
         { }
 
         public PostfixOperator(string operatorString,
-                              FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterStringParser,
+                              ParserX<TAfterString, TUserState> afterStringParser,
                               int precedence,
                               bool isAssociative,
                               Unit dummy, // disambiguates overloads in F#
@@ -231,9 +231,9 @@ namespace FParsec
     public sealed class TernaryOperator<TTerm, TAfterString, TUserState> : Operator<TTerm, TAfterString, TUserState>
     {
         public TernaryOperator(string leftString,
-                               FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterLeftStringParser,
+                               ParserX<TAfterString, TUserState> afterLeftStringParser,
                                string rightString,
-                               FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterRightStringParser,
+                               ParserX<TAfterString, TUserState> afterRightStringParser,
                                int precedence,
                                Associativity associativity,
                                FSharpFunc<TTerm, FSharpFunc<TTerm, FSharpFunc<TTerm, TTerm>>> mapping)
@@ -242,9 +242,9 @@ namespace FParsec
         { }
 
         public TernaryOperator(string leftString,
-                               FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterLeftStringParser,
+                               ParserX<TAfterString, TUserState> afterLeftStringParser,
                                string rightString,
-                               FSharpFunc<CharStream<TUserState>, Reply<TAfterString>> afterRightStringParser,
+                               ParserX<TAfterString, TUserState> afterRightStringParser,
                                int precedence,
                                Associativity associativity,
                                Unit dummy, // disambiguates overloads in F#
@@ -252,7 +252,7 @@ namespace FParsec
                : base(leftString, afterLeftStringParser, rightString, afterRightStringParser, precedence, associativity, mapping) { }
     }
 
-    public class OperatorPrecedenceParser<TTerm, TAfterString, TUserState> : FSharpFunc<CharStream<TUserState>, Reply<TTerm>>
+    public sealed class OperatorPrecedenceParser<TTerm, TAfterString, TUserState> : ParserX<TTerm, TUserState>
     {
         internal struct OperatorData
         { // declared as struct, so we can allocate it on the stack
@@ -297,7 +297,7 @@ namespace FParsec
         /// <summary>Can not be readonly because it is passed as as a ref (for performance reasons), but it is never mutated.</summary>
         private OperatorData ZeroPrecedenceOperatorData = new OperatorData { Operator = Operator<TTerm, TAfterString, TUserState>.ZeroPrecedenceOperator };
 
-        public FSharpFunc<CharStream<TUserState>, Reply<TTerm>> TermParser { get; set; }
+        public ParserX<TTerm, TUserState> TermParser { [MethodImpl(MethodImplOptions.AggressiveInlining)]get; set; }
 
         public FSharpFunc<
                    Tuple<Position, Position, TernaryOperator<TTerm, TAfterString, TUserState>, TAfterString>,
@@ -332,7 +332,7 @@ namespace FParsec
             OperatorConflictErrorFormatter = new DefaultOperatorConflictErrorFormatter();
         }
 
-        public FSharpFunc<CharStream<TUserState>, Reply<TTerm>> ExpressionParser { get { return this; } }
+        public ParserX<TTerm, TUserState> ExpressionParser { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return this; } }
 
         private bool FindPosition(Operator<TTerm, TAfterString, TUserState>[][] ops, string str, out int arrayIndex, out int indexInArray)
         {
@@ -537,7 +537,7 @@ namespace FParsec
             return null;
         }
 
-        public override Reply<TTerm> Invoke(CharStream<TUserState> stream)
+        public sealed override Reply<TTerm> Invoke(CharStream<TUserState> stream)
         {
             Reply<TTerm> reply = new Reply<TTerm>();
             reply.Status = ReplyStatus.Ok;

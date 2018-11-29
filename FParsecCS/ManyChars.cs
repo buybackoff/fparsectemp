@@ -16,14 +16,14 @@ internal unsafe struct _16CharBuffer {
 }
 #endif
 
-    internal class Many1Chars<TUserState> : FSharpFunc<CharStream<TUserState>, Reply<string>>
+    internal class Many1Chars<TUserState> : ParserX<string, TUserState> // FSharpFunc<CharStream<TUserState>, Reply<string>>
     {
-        protected FSharpFunc<CharStream<TUserState>, Reply<char>> CharParser1;
-        protected FSharpFunc<CharStream<TUserState>, Reply<char>> CharParser;
+        protected ParserX<char, TUserState> CharParser1;
+        protected ParserX<char, TUserState> CharParser;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Many1Chars(FSharpFunc<CharStream<TUserState>, Reply<char>> charParser1,
-                          FSharpFunc<CharStream<TUserState>, Reply<char>> charParser)
+        public Many1Chars(ParserX<char, TUserState> charParser1,
+            ParserX<char, TUserState> charParser)
         {
             CharParser1 = charParser1;
             CharParser = charParser;
@@ -108,14 +108,14 @@ internal unsafe struct _16CharBuffer {
             }
         }
 
-        public FSharpFunc<CharStream<TUserState>, Reply<string>> AsFSharpFunc { get { return this; } }
+        // public FSharpFunc<CharStream<TUserState>, Reply<string>> AsFSharpFunc { get { return this; } }
     }
 
     internal class ManyChars<TUserState> : Many1Chars<TUserState>
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ManyChars(FSharpFunc<CharStream<TUserState>, Reply<char>> charParser1,
-                         FSharpFunc<CharStream<TUserState>, Reply<char>> charParser)
+        public ManyChars(ParserX<char, TUserState> charParser1,
+            ParserX<char, TUserState> charParser)
                : base(charParser1, charParser) { }
 
         public override Reply<string> Invoke(CharStream<TUserState> stream)
@@ -131,17 +131,17 @@ internal unsafe struct _16CharBuffer {
         }
     }
 
-    internal class Many1CharsTill<TUserState, TEnd, TResult> : FSharpFunc<CharStream<TUserState>, Reply<TResult>>
+    internal class Many1CharsTill<TUserState, TEnd, TResult> : ParserX<TResult, TUserState>
     {
-        protected FSharpFunc<CharStream<TUserState>, Reply<char>> CharParser1;
-        protected FSharpFunc<CharStream<TUserState>, Reply<char>> CharParser;
-        protected FSharpFunc<CharStream<TUserState>, Reply<TEnd>> EndParser;
+        protected ParserX<char, TUserState> CharParser1;
+        protected ParserX<char, TUserState> CharParser;
+        protected ParserX<TEnd, TUserState> EndParser;
         protected OptimizedClosures.FSharpFunc<string, TEnd, TResult> Mapping;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Many1CharsTill(FSharpFunc<CharStream<TUserState>, Reply<char>> charParser1,
-                              FSharpFunc<CharStream<TUserState>, Reply<char>> charParser,
-                              FSharpFunc<CharStream<TUserState>, Reply<TEnd>> endParser,
+        public Many1CharsTill(ParserX<char, TUserState> charParser1,
+                                ParserX<char, TUserState> charParser,
+                                ParserX<TEnd, TUserState> endParser,
                               FSharpFunc<string, FSharpFunc<TEnd, TResult>> mapping)
         {
             CharParser1 = charParser1;
@@ -245,15 +245,15 @@ internal unsafe struct _16CharBuffer {
             }
         }
 
-        public FSharpFunc<CharStream<TUserState>, Reply<TResult>> AsFSharpFunc { get { return this; } }
+        // public FSharpFunc<CharStream<TUserState>, Reply<TResult>> AsFSharpFunc { get { return this; } }
     }
 
     internal class ManyCharsTill<TUserState, TEnd, TResult> : Many1CharsTill<TUserState, TEnd, TResult>
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ManyCharsTill(FSharpFunc<CharStream<TUserState>, Reply<char>> charParser1,
-                             FSharpFunc<CharStream<TUserState>, Reply<char>> charParser,
-                             FSharpFunc<CharStream<TUserState>, Reply<TEnd>> endParser,
+        public ManyCharsTill(ParserX<char, TUserState> charParser1,
+                             ParserX<char, TUserState> charParser,
+                             ParserX<TEnd, TUserState> endParser,
                              FSharpFunc<string, FSharpFunc<TEnd, TResult>> mapping)
                : base(charParser1, charParser, endParser, mapping) { }
 

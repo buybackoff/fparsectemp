@@ -28,7 +28,7 @@ let jnumber = pfloat |>> JNumber // pfloat will accept a little more than specif
 
 let str s = pstring s
 
-let stringLiteral =
+let stringLiteral:Parser<string,unit> =
     let escape =  anyOf "\"\\/bfnrt"
                   |>> function
                       | 'b' -> "\b"
@@ -38,7 +38,7 @@ let stringLiteral =
                       | 't' -> "\t"
                       | c   -> string c // every other char is mapped to itself
 
-    let unicodeEscape =
+    let unicodeEscape: Parser<string, unit> =
         /// converts a hex char ([0-9a-fA-F]) to its integer number (0-15)
         let hex2int c = (int c &&& 15) + (int c >>> 6)*9
 
@@ -48,39 +48,39 @@ let stringLiteral =
         )
 
     let escapedCharSnippet = str "\\" >>. (escape <|> unicodeEscape)
-    let normalCharSnippet  = manySatisfy (fun c -> c <> '"' && c <> '\\')
+    let normalCharSnippet:Parser<string,unit>  = manySatisfy (fun c -> c <> '"' && c <> '\\')
 
     between (str "\"") (str "\"")
             (stringsSepBy normalCharSnippet escapedCharSnippet)
 
-let jstring = stringLiteral |>> JString
+let jstring:Parser<Json,unit> = stringLiteral |>> JString
 
 // jvalue, jlist and jobject are three mutually recursive grammar productions.
 // In order to break the cyclic dependency, we make jvalue a parser that
 // forwards all calls to a parser in a reference cell.
-let mutable jvalueRef = Unchecked.defaultof<_>
-let inline jvalue stream = jvalueRef stream
+//let mutable jvalueRef = Unchecked.defaultof<_>
+//let inline jvalue stream = jvalueRef stream
 // x, r : Parser<_,'u> * Parser<_,'u> ref
-//let jvalue, jvalueRef = createParserForwardedToRef() // initially jvalueRef holds a reference to a dummy parser
+let (jvalue:Parser<Json,unit>), jvalueRef = createParserForwardedToRef() // initially jvalueRef holds a reference to a dummy parser
 
-let ws = spaces // skips any whitespace
+let ws = spaces<unit> // skips any whitespace
 
 let listBetweenStrings sOpen sClose pElement f =
     between (str sOpen) (str sClose)
             (ws >>. sepBy (pElement .>> ws) (str "," .>> ws) |>> f)
 
-let keyValue = tuple2 stringLiteral (ws >>. str ":" >>. ws >>. jvalue)
+let keyValue:Parser<struct (string *Json),unit> = tuple2 stringLiteral (ws >>. str ":" >>. ws >>. jvalue)
 
 let jlist   = listBetweenStrings "[" "]" jvalue JList
 let jobject = listBetweenStrings "{" "}" keyValue JObject
 
-jvalueRef <-  choice [  jobject
-                        jlist
-                        jstring
-                        jnumber
-                        jtrue
-                        jfalse
-                        jnull ]
+do jvalueRef :=  choice [   jobject
+                            jlist
+                            jstring
+                            jnumber
+                            jtrue
+                            jfalse
+                            jnull ]
 
 let json = ws >>. jvalue .>> ws .>> eof
 
