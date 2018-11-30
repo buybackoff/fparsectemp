@@ -2,11 +2,10 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using Microsoft.FSharp.Core;
 
-namespace FParsec
+namespace Spreads.Slang.FParsec
 {
     public enum ReplyStatus
     {
@@ -59,14 +58,14 @@ namespace FParsec
         public bool Equals(Reply<TResult> other)
         {
             return Status == other.Status
-                   && (Status != ReplyStatus.Ok || FastGenericEqualityERComparer<TResult>.Instance.Equals(Result, other.Result))
+                   && (Status != ReplyStatus.Ok || EqualityComparer<TResult>.Default.Equals(Result, other.Result))
                    && Error == other.Error;
         }
 
         public override int GetHashCode()
         {
             return (int)Status
-                   ^ (Status != ReplyStatus.Ok ? 0 : FastGenericEqualityERComparer<TResult>.Instance.GetHashCode(Result));
+                   ^ (Status != ReplyStatus.Ok ? 0 : EqualityComparer<TResult>.Default.GetHashCode(Result));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

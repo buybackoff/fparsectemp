@@ -2,10 +2,10 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 using System;
-using System.Diagnostics;
 using System.Collections.Generic;
+using System.Diagnostics;
 
-namespace FParsec {
+namespace Spreads.Slang.FParsec {
 
 [DebuggerDisplay("{ErrorMessageList.GetDebuggerDisplay(this),nq}"),
  DebuggerTypeProxy(typeof(ErrorMessageList.DebugView))]

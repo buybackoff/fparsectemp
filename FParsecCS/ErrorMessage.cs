@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Stephan Tolksdorf 2010
 // License: Simplified BSD License. See accompanying documentation.
 
-using Microsoft.FSharp.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.FSharp.Core;
 
-namespace FParsec
+namespace Spreads.Slang.FParsec
 {
     public enum ErrorMessageType
     {

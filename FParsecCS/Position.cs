@@ -4,7 +4,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-namespace FParsec
+namespace Spreads.Slang.FParsec
 {
     public readonly struct Position : IEquatable<Position>, IComparable, IComparable<Position>
     {

@@ -2,7 +2,7 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 [<AutoOpen>]
-module FParsec.Error
+module Spreads.Slang.FParsec.Error
 
 type Expected = ErrorMessage.Expected
 type ExpectedString = ErrorMessage.ExpectedString

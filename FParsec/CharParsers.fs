@@ -2,7 +2,7 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 [<AutoOpen>]
-module FParsec.CharParsers
+module Spreads.Slang.FParsec.CharParsers
 
 open System
 open System.Diagnostics
@@ -17,10 +17,10 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.NativeInterop
 #endif
 
-open FParsec
-open FParsec.Internals
-open FParsec.Error
-open FParsec.Primitives
+open Spreads.Slang.FParsec
+open Spreads.Slang.FParsec.Internals
+open Spreads.Slang.FParsec.Error
+open Spreads.Slang.FParsec.Primitives
 
 #nowarn "9" // "Uses of this construct may result in the generation of unverifiable .NET IL code."
 #nowarn "51" // "The address-of operator may result in non-verifiable code."
@@ -74,30 +74,6 @@ let runParserOnString (parser: Parser<'Result,'UserState>) (ustate: 'UserState) 
 let runParserOnSubstring (parser: Parser<'Result,'UserState>) (ustate: 'UserState) (streamName: string) (chars: string) (index: int) length =
     CharStream.ParseString(chars, index, length, applyParser parser, ustate, streamName)
 
-let runParserOnStream (parser: Parser<'Result,'UserState>) (ustate: 'UserState) (streamName: string) (byteStream: System.IO.Stream) (encoding: System.Text.Encoding) =
-#if LOW_TRUST
-    let
-#else
-    use
-#endif
-        stream = new CharStream<'UserState>(byteStream, encoding)
-    stream.UserState <- ustate
-    stream.Name <- streamName
-    applyParser parser stream
-
-#if PCL
-#else
-let runParserOnFile (parser: Parser<'Result,'UserState>) (ustate: 'UserState) (path: string) (encoding: System.Text.Encoding) =
-#if LOW_TRUST
-    let
-#else
-    use
-#endif
-        stream = new CharStream<'UserState>(path, encoding)
-    stream.UserState <- ustate
-    applyParser parser stream
-#endif
-
 let run parser (string: string) =
     runParserOnString parser () "" string
 
@@ -105,14 +81,16 @@ let run parser (string: string) =
 // Parsers
 // =======
 
+let internal pdelegate f : Parser<_,_> = { new Parser<_,_>() with override __.InvokeImpl(stream) = f(stream) }
+
 // -------------------------------------------------------------
 // Reading the input stream position and handling the user state
 // -------------------------------------------------------------
 
-let getPosition() : Parser<Position,'u> =
-    { new Parser<Position,'u>() with override __.InvokeImpl(stream:CharStream<'u>) = new Reply<Position>(stream.Position) } :> Parser<Position,'u>
+let getPosition<'u> : Parser<Position,'u> =
+    { new Parser<Position,'u>() with override __.InvokeImpl(stream:CharStream<'u>) = new Reply<Position>(stream.Position) }
 
-let getUserState() : Parser<'u,'u> =
+let getUserState<'u> : Parser<'u,'u> =
     { new Parser<_,_>() with override __.InvokeImpl(stream) = Reply(stream.UserState) }
 
 let setUserState (newUserState: 'u) : Parser<unit,'u> =
@@ -368,31 +346,29 @@ let inline isHex (c: char) =
 let inline isOctal (c: char) =
     uint32 c - uint32 '0' <= uint32 '7' - uint32 '0'
 
-let asciiUpper  stream = (fastInlineSatisfyE isAsciiUpper  Errors.ExpectedAsciiUppercaseLetter).Invoke stream
-let asciiLower  stream = (fastInlineSatisfyE isAsciiLower  Errors.ExpectedAsciiLowercaseLetter).Invoke stream
-let asciiLetter stream = (fastInlineSatisfyE isAsciiLetter Errors.ExpectedAsciiLetter).Invoke stream
+let asciiUpper<'u> : Parser<char,'u>  = 
+    fastInlineSatisfyE isAsciiUpper Errors.ExpectedAsciiUppercaseLetter
+let asciiLower<'u> : Parser<char,'u> = 
+    fastInlineSatisfyE isAsciiLower  Errors.ExpectedAsciiLowercaseLetter
+let asciiLetter<'u> : Parser<char,'u> = 
+    fastInlineSatisfyE isAsciiLetter Errors.ExpectedAsciiLetter
 
 // unicode is the default for letters and ascii the default for numbers
-let upper  stream = (fastInlineSatisfyE isUpper  Errors.ExpectedUppercaseLetter).Invoke stream
-let lower  stream = (fastInlineSatisfyE isLower  Errors.ExpectedLowercaseLetter).Invoke stream
-let letter stream = (fastInlineSatisfyE isLetter Errors.ExpectedLetter         ).Invoke stream
+let upper<'u> : Parser<char,'u> = 
+    fastInlineSatisfyE isUpper  Errors.ExpectedUppercaseLetter
+let lower<'u> : Parser<char,'u> =
+    fastInlineSatisfyE isLower  Errors.ExpectedLowercaseLetter
+let letter<'u> : Parser<char,'u> = 
+    fastInlineSatisfyE isLetter Errors.ExpectedLetter
 
-let digit  stream = (fastInlineSatisfyE isDigit  Errors.ExpectedDecimalDigit    ).Invoke stream
-let hex<'u> = 
-   { new Parser<_,'u>() with 
-      override __.InvokeImpl(stream) =
-        (fastInlineSatisfyE isHex    Errors.ExpectedHexadecimalDigit).Invoke stream
-   }
-let octal  stream = (fastInlineSatisfyE isOctal  Errors.ExpectedOctalDigit      ).Invoke stream
+let digit<'u> : Parser<char,'u> = fastInlineSatisfyE isDigit  Errors.ExpectedDecimalDigit
+let hex<'u> : Parser<char,'u> = fastInlineSatisfyE isHex  Errors.ExpectedHexadecimalDigit
+   
+let octal<'u> : Parser<char,'u> = fastInlineSatisfyE isOctal  Errors.ExpectedOctalDigit
 
-let tab stream = (fastInlineSatisfyE ((=) '\t') Errors.ExpectedTab).Invoke stream
+let tab<'u> : Parser<char,'u> = fastInlineSatisfyE ((=) '\t') Errors.ExpectedTab
 
 let spaces<'u> : Parser<unit,'u> = new SpacesParser<'u>() :> Parser<unit,'u>
-  //{ new Parser<_,_>() with 
-  //    override __.InvokeImpl(stream) =
-  //      stream.SkipWhitespace() |> ignore
-  //      Reply(())
-  //}
 
 let spaces1<'u> : Parser<unit,'u> =
   { new Parser<_,_>() with 
@@ -807,18 +783,18 @@ let identifier (identifierOptions: IdentifierOptions) : Parser<string, _> =
 // Parsing strings with the help of other parsers
 // ----------------------------------------------
 
-let manyChars2 p1 p = ManyChars(p1, p) //.AsFSharpFunc
+let manyChars2 p1 p = ManyChars(p1, p) :> Parser<_,_>
 let manyChars     p = manyChars2 p p
 
-let many1Chars2 p1 p = Many1Chars(p1, p) //.AsFSharpFunc
+let many1Chars2 p1 p = Many1Chars(p1, p) :> Parser<_,_>
 let many1Chars     p = many1Chars2 p p
 
-let manyCharsTillApply2 p1 p endp f = ManyCharsTill(p1, p, endp, f) //.AsFSharpFunc
+let manyCharsTillApply2 p1 p endp f = ManyCharsTill(p1, p, endp, f) :> Parser<_,_>
 let manyCharsTillApply     p endp f = manyCharsTillApply2 p p endp f
 let manyCharsTill2      p1 p endp   = manyCharsTillApply2 p1 p endp (fun str _ -> str)
 let manyCharsTill          p endp   = manyCharsTill2 p p endp
 
-let many1CharsTillApply2 p1 p endp f = Many1CharsTill(p1, p, endp, f) // .AsFSharpFunc
+let many1CharsTillApply2 p1 p endp f = Many1CharsTill(p1, p, endp, f) :> Parser<_,_>
 let many1CharsTillApply     p endp f = many1CharsTillApply2 p p endp f
 let many1CharsTill2      p1 p endp   = many1CharsTillApply2 p1 p endp (fun str _ -> str)
 let many1CharsTill          p endp   = many1CharsTill2 p p endp
@@ -1109,7 +1085,7 @@ type NumberLiteral(string:
         if isNotNull string then string.GetHashCode() else 0
         #endif
 
-let inline numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: ErrorMessageList) (stream: CharStream<'u>) =
+let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: ErrorMessageList) (stream: CharStream<'u>) =
     let index0 = stream.IndexToken
     let stateTag = stream.StateTag
     let mutable c = stream.Peek()
@@ -1222,7 +1198,7 @@ let inline numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound
 
         if isNull error then
             if (opt &&& NLO.AllowSuffix) = NLO.None  || not (isAsciiLetter c) then
-                #if NETCOREAPP2_1
+                #if NETCOREAPP2_1 && LOW_TRUST
                 let str = stream.Slice(index0)
                 #else
                 let str = stream.ReadFrom(index0)
@@ -1290,7 +1266,9 @@ let inline numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound
               stream.StateTag <- stateTag
            Reply(Error, errorInCaseNoLiteralFound)
 
-// let numberLiteral opt label = numberLiteralE opt (expected label)
+
+
+let numberLiteral opt label =  numberLiteralE opt (expected label) |> pdelegate
 
 
 [<Sealed>]
@@ -1619,16 +1597,16 @@ let inline internal pint (opt: NumberLiteralOptions) (max: 'uint) (uint64_: 'uin
             stream.StateTag <- stateTag
     Reply(status, result, error)
 
-let pint64 stream = pint NumberLiteralOptions.DefaultInteger (uint64 System.Int64.MaxValue)            uint64 uint64 uint64 uint64 int64 int64 Errors.ExpectedInt64 Errors.NumberOutsideOfInt64Range stream
-let pint32 stream = pint NumberLiteralOptions.DefaultInteger (uint32 System.Int32.MaxValue)            uint64 uint32 uint32 uint32 int32 int32 Errors.ExpectedInt32 Errors.NumberOutsideOfInt32Range stream
+let pint64<'u> : Parser<int64,'u> = pint NumberLiteralOptions.DefaultInteger (uint64 System.Int64.MaxValue)            uint64 uint64 uint64 uint64 int64 int64 Errors.ExpectedInt64 Errors.NumberOutsideOfInt64Range |> pdelegate
+let pint32<'u> : Parser<int32,'u> = pint NumberLiteralOptions.DefaultInteger (uint32 System.Int32.MaxValue)            uint64 uint32 uint32 uint32 int32 int32 Errors.ExpectedInt32 Errors.NumberOutsideOfInt32Range |> pdelegate
                                                            // fsc's optimizer seems to have problems with literals of small int types
-let pint16 stream = pint NumberLiteralOptions.DefaultInteger ((*uint32 System.Int16.MaxValue*)0x7fffu) uint64 uint32 uint32 uint32 int16 int16 Errors.ExpectedInt16 Errors.NumberOutsideOfInt16Range stream
-let pint8  stream = pint NumberLiteralOptions.DefaultInteger ((*uint32 System.SByte.MaxValue*)0x7fu)   uint64 uint32 uint32 uint32 sbyte sbyte Errors.ExpectedInt8  Errors.NumberOutsideOfInt8Range stream
+let pint16<'u> : Parser<int16,'u> = pint NumberLiteralOptions.DefaultInteger ((*uint32 System.Int16.MaxValue*)0x7fffu) uint64 uint32 uint32 uint32 int16 int16 Errors.ExpectedInt16 Errors.NumberOutsideOfInt16Range |> pdelegate
+let pint8<'u> : Parser<int8,'u>  = pint NumberLiteralOptions.DefaultInteger ((*uint32 System.SByte.MaxValue*)0x7fu)   uint64 uint32 uint32 uint32 sbyte sbyte Errors.ExpectedInt8  Errors.NumberOutsideOfInt8Range |> pdelegate
 
-let puint64 stream = pint NumberLiteralOptions.DefaultUnsignedInteger System.UInt64.MaxValue uint64 uint64 uint64 uint64 uint64 uint64 Errors.ExpectedUInt64 Errors.NumberOutsideOfUInt64Range stream
-let puint32 stream = pint NumberLiteralOptions.DefaultUnsignedInteger System.UInt32.MaxValue uint64 uint32 uint32 uint32 uint32 uint32 Errors.ExpectedUInt32 Errors.NumberOutsideOfUInt32Range stream
-let puint16 stream = pint NumberLiteralOptions.DefaultUnsignedInteger 0xffffu                uint64 uint32 uint32 uint32 uint16 uint16 Errors.ExpectedUInt16 Errors.NumberOutsideOfUInt16Range stream
-let puint8  stream = pint NumberLiteralOptions.DefaultUnsignedInteger 0xffu                  uint64 uint32 uint32 uint32 byte   byte   Errors.ExpectedUInt8  Errors.NumberOutsideOfUInt8Range stream
+let puint64<'u> : Parser<uint64,'u> = pint NumberLiteralOptions.DefaultUnsignedInteger System.UInt64.MaxValue uint64 uint64 uint64 uint64 uint64 uint64 Errors.ExpectedUInt64 Errors.NumberOutsideOfUInt64Range |> pdelegate
+let puint32<'u> : Parser<uint32,'u> = pint NumberLiteralOptions.DefaultUnsignedInteger System.UInt32.MaxValue uint64 uint32 uint32 uint32 uint32 uint32 Errors.ExpectedUInt32 Errors.NumberOutsideOfUInt32Range |> pdelegate
+let puint16<'u> : Parser<uint16,'u> = pint NumberLiteralOptions.DefaultUnsignedInteger 0xffffu                uint64 uint32 uint32 uint32 uint16 uint16 Errors.ExpectedUInt16 Errors.NumberOutsideOfUInt16Range |> pdelegate
+let puint8<'u> : Parser<uint8,'u>  = pint NumberLiteralOptions.DefaultUnsignedInteger 0xffu                  uint64 uint32 uint32 uint32 byte   byte   Errors.ExpectedUInt8  Errors.NumberOutsideOfUInt8Range |> pdelegate
 
 
 

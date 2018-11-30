@@ -3,13 +3,13 @@
 
 // See parser.fs for more information.
 
-open FParsec.CharParsers
+open Spreads.Slang.FParsec.CharParsers
 
 open Ast
 open Parser
 open System
 open System.Collections.Generic
-open FParsec
+open Spreads.Slang.FParsec
 
 [<EntryPoint>]
 let main(args: string[]) =
@@ -17,7 +17,7 @@ let main(args: string[]) =
     // If the file has no byte order marks, System.Text.Encoding.Default
     // is assumed to be the encoding.
     // The parser result will be the abstract syntax tree of the input file.
-    let count = 2_000_000L;
+    let count = 1_000_000L;
     //let x = Spreads.Utils.Benchmark.Run("xxx", count * 1000L)
     // let list = new List<_>(int count)
     let result =

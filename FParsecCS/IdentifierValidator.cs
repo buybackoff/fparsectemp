@@ -2,13 +2,11 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 using System;
-using System.Text;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-
+using System.Text;
 using Microsoft.FSharp.Core;
 
-namespace FParsec {
+namespace Spreads.Slang.FParsec {
 
 #if !LOW_TRUST
     unsafe

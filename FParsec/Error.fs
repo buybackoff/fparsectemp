@@ -2,14 +2,14 @@
 // License: BSD-style. See accompanying documentation.
 
 [<AutoOpen>]
-module FParsec.Error
+module Spreads.Slang.FParsec.Error
 
 //open FParsec
 
 open System.Diagnostics
 open System.Globalization
 open System.IO
-open FParsec.Internals
+open Spreads.Slang.FParsec.Internals
 
 // Unfortunately, F# currently doesn't support active patterns with more than 7
 // cases, so we have to use partial patterns.
@@ -360,4 +360,4 @@ type ParserError(position: Position, userState: obj, messages: ErrorMessageList)
     override t.GetHashCode() = t.Position.GetHashCode() ^^^ hash t.Messages
 
 let inline internal raiseInfiniteLoopException name stream =
-    raise (FParsec.Internal.ParserCombinatorInInfiniteLoopHelper.CreateException(name, stream))
+    raise (Spreads.Slang.FParsec.Internal.ParserCombinatorInInfiniteLoopHelper.CreateException(name, stream))

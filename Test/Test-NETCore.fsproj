@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Test</AssemblyName>
     <OutputType>Exe</OutputType>
@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(MSBuildThisFileDirectory)\..\FParsec\FParsec-NETCore.fsproj" />
-    <ProjectReference Include="$(MSBuildThisFileDirectory)\..\FParsecCS\FParsecCS-NETCore.csproj" />
+    <ProjectReference Include="..\FParsecCS\Slang.FParsecCS.csproj" />
+    <ProjectReference Include="..\FParsec\Slang.FParsec.fsproj" />
   </ItemGroup>
 </Project>

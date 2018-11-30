@@ -1,13 +1,13 @@
 ﻿// Copyright (c) Stephan Tolksdorf 2008-2011
 // License: Simplified BSD License. See accompanying documentation.
 
-using Microsoft.FSharp.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Microsoft.FSharp.Core;
 
-namespace FParsec
+namespace Spreads.Slang.FParsec
 {
     public enum Associativity
     {
@@ -330,9 +330,6 @@ namespace FParsec
         {
             MissingTernary2ndStringErrorFormatter = new DefaultMissingTernary2ndStringErrorFormatter();
             OperatorConflictErrorFormatter = new DefaultOperatorConflictErrorFormatter();
-
-            _parseMethodPtr = CalliHelper.LdvirtftnOPP<TTerm, TAfterString, TUserState>();
-            HasParseMethodPtr = true;
         }
 
         public Parser<TTerm, TUserState> ExpressionParser { [MethodImpl(MethodImplOptions.AggressiveInlining)]get { return this; } }

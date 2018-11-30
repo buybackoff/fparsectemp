@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Stephan Tolksdorf 2008-2010
 // License: Simplified BSD License. See accompanying documentation.
 
-using Microsoft.FSharp.Core;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Microsoft.FSharp.Core;
 
-namespace FParsec
+namespace Spreads.Slang.FParsec
 {
 #if !LOW_TRUST
 internal unsafe struct _16CharBuffer {

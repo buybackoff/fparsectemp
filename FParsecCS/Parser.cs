@@ -1,8 +1,8 @@
-﻿using Microsoft.FSharp.Core;
-using System;
+﻿using System;
 using System.Runtime.CompilerServices;
+using Microsoft.FSharp.Core;
 
-namespace FParsec
+namespace Spreads.Slang.FParsec
 {
     public interface IParser<TResult, TUserState>
     {
@@ -13,26 +13,12 @@ namespace FParsec
     {
         protected abstract Reply<TResult> InvokeImpl(CharStream<TUserState> charStream);
 
-        protected IntPtr _parseMethodPtr;
-        internal bool HasParseMethodPtr;
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply<TResult> Invoke(CharStream<TUserState> charStream)
         {
-            //if (HasParseMethodPtr)
-            //{
-            //    return CalliHelper.InvokeFast<Reply<TResult>, CharStream<TUserState>>(this, charStream, _parseMethodPtr);
-            //}
-
+            // here we had attempt to use calli, it is slower, but keep methods as is
             return InvokeImpl(charStream);
         }
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //internal Reply<TResult> InvokeFast(CharStream<TUserState> charStream)
-        //{
-        //    return CalliHelper.InvokeFast<Reply<TResult>, CharStream<TUserState>>(this, charStream, _parseMethodPtr);
-        //}
-
     }
 
     public sealed class Parser<TResult, TUserState, TImpl> : Parser<TResult, TUserState>
@@ -43,14 +29,6 @@ namespace FParsec
         public Parser(TImpl impl)
         {
             _impl = impl;
-            _parseMethodPtr = CalliHelper.Ldvirtftn<TResult, TUserState, TImpl>();
-            HasParseMethodPtr = true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Reply<TResult> Parse(Parser<TResult, TUserState, TImpl> th, CharStream<TUserState> stream)
-        {
-            return th.Parse(stream);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -62,29 +40,6 @@ namespace FParsec
         protected override Reply<TResult> InvokeImpl(CharStream<TUserState> charStream)
         {
             return _impl.Parse(charStream);
-        }
-
-        
-    }
-
-    internal class Test
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static IntPtr TestMe<TLeft, TRight, TUserState>(TakeLeftParser<TLeft, TRight, TUserState> parser, Unit u)
-        {
-            CharStream<TUserState> str = default;
-            var x = parser.Parse(str);
-
-            var y = TakeLeftParser<TLeft, TRight, TUserState>.Parse(parser, str);
-            return IntPtr.Zero;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Reply<TResult> InvokeFast<TResult, TUserState>(object parser, CharStream<TUserState> stream,
-            IntPtr fnptr)
-        {
-            var str = parser.ToString();
-            return default;
         }
     }
 
@@ -99,20 +54,12 @@ namespace FParsec
         {
             _l = l;
             _r = r;
-            _parseMethodPtr = CalliHelper.LdvirtftnTakeLeft<TLeft, TRight, TUserState>();
-            HasParseMethodPtr = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override Reply<TLeft> InvokeImpl(CharStream<TUserState> stream)
         {
             return Parse(stream);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Reply<TLeft> Parse(object th, CharStream<TUserState> stream)
-        {
-            return ((TakeLeftParser<TLeft, TRight, TUserState>)th).Parse(stream);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -123,24 +70,7 @@ namespace FParsec
             if (reply1.Status == ReplyStatus.Ok)
             {
                 var stateTag1 = stream.StateTag;
-                Reply<TRight> reply2;
-                //if (typeof(TRight) == typeof(Unit))
-                //{
-                //    if (_r is SpacesParser<TUserState> sp)
-                //    {
-                //        reply2 = sp.Parse<TRight>(stream);
-                //    }
-                //    else
-                //    {
-                //        reply2 = _r.Invoke(stream);
-                //    }
-                //}
-                //else
-                //{
-                //    reply2 = _r.Invoke(stream);
-                //}
-
-                reply2 = _r.Invoke(stream);
+                var reply2 = _r.Invoke(stream);
 
                 var error = reply1.Error == null ? reply2.Error
                     : stateTag1 != stream.StateTag ? reply2.Error
@@ -164,8 +94,6 @@ namespace FParsec
         {
             _l = l;
             _r = r;
-            _parseMethodPtr = CalliHelper.LdvirtftnTakeRight<TLeft, TRight, TUserState>();
-            HasParseMethodPtr = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -176,36 +104,15 @@ namespace FParsec
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Reply<TRight> Parse(object th, CharStream<TUserState> stream)
-        {
-            return ((TakeRightParser<TLeft, TRight, TUserState>)th).Parse(stream);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply<TRight> Parse(CharStream<TUserState> stream)
         {
-            Reply<TLeft> reply1;
-            //if (typeof(TLeft) == typeof(Unit))
-            //{
-            //    if (_l is SpacesParser<TUserState> sp)
-            //    {
-            //        reply1 = sp.Parse<TLeft>(stream);
-            //    }
-            //    else
-            //    {
-            //        reply1 = _l.Invoke(stream);
-            //    }
-            //}
-            //else
-            {
-                reply1 =  _l.Invoke(stream);
-            }
+            var reply1 = _l.Invoke(stream);
 
             if (reply1.Status == ReplyStatus.Ok)
             {
                 if (reply1.Error == null)
                 {
-                    return  _r.Invoke(stream); ;
+                    return _r.Invoke(stream); ;
                 }
 
                 var stateTag1 = stream.StateTag;
@@ -226,8 +133,6 @@ namespace FParsec
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SpacesParser()
         {
-            _parseMethodPtr = CalliHelper.LdvirtftnSpaces<TUserState>();
-            HasParseMethodPtr = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -238,19 +143,19 @@ namespace FParsec
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Reply<Unit> Parse(object th, CharStream<TUserState> stream)
-        {
-            return Unsafe.As<SpacesParser<TUserState>>(th).Parse(stream);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply<Unit> Parse(CharStream<TUserState> stream)
         {
             stream.SkipWhitespace();
             return new Reply<Unit>(default(Unit));
         }
-    }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Reply<T> Parse<T>(CharStream<TUserState> stream)
+        {
+            stream.SkipWhitespace();
+            return new Reply<T>(default(T));
+        }
+    }
 
     [Sealed]
     [Serializable]
@@ -267,22 +172,22 @@ namespace FParsec
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply<ValueTuple<a, b>> Parse(CharStream<u> stream)
         {
-            Reply<a> reply = this.p.Invoke(stream);
+            var reply = this.p.Invoke(stream);
             if (reply.Status == ReplyStatus.Ok)
             {
-                ulong stateTag = stream.StateTag;
-                Reply<b> reply2 = this.q.Invoke(stream);
-                ErrorMessageList error = (stateTag == stream.StateTag) ? ErrorMessageList.Merge(reply.Error, reply2.Error) : reply2.Error;
-                ValueTuple<a, b> result = (reply2.Status != ReplyStatus.Ok) ? default(ValueTuple<a, b>) : new ValueTuple<a, b>(reply.Result, reply2.Result);
+                var stateTag = stream.StateTag;
+                var reply2 = this.q.Invoke(stream);
+                var error = (stateTag == stream.StateTag) ? ErrorMessageList.Merge(reply.Error, reply2.Error) : reply2.Error;
+                var result = (reply2.Status != ReplyStatus.Ok) ? default(ValueTuple<a, b>) : new ValueTuple<a, b>(reply.Result, reply2.Result);
                 return new Reply<ValueTuple<a, b>>(reply2.Status, result, error);
             }
             return new Reply<ValueTuple<a, b>>(reply.Status, reply.Error);
         }
+
         internal Parser<b, u> q;
 
         internal Parser<a, u> p;
     }
-
 
     [Sealed]
     internal sealed class PChoiceArr<a, u> : IParser<a, u>
@@ -338,12 +243,11 @@ namespace FParsec
         }
     }
 
-
     [Sealed]
     [Serializable]
     internal sealed class PLessBarGreater<a, u> : IParser<a, u>
     {
-        public PLessBarGreater(Parser<a, u> p1, Parser<a, u> p2) 
+        public PLessBarGreater(Parser<a, u> p1, Parser<a, u> p2)
         {
             this.p1 = p1;
             this.p2 = p2;
@@ -352,11 +256,11 @@ namespace FParsec
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Reply<a> Parse(CharStream<u> stream)
         {
-            ulong stateTag = stream.StateTag;
-            Reply<a> reply = this.p1.Invoke(stream);
+            var stateTag = stream.StateTag;
+            var reply = this.p1.Invoke(stream);
             if (reply.Status == ReplyStatus.Error && stateTag == stream.StateTag)
             {
-                ErrorMessageList error = reply.Error;
+                var error = reply.Error;
                 reply = this.p2.Invoke(stream);
                 if (stateTag == stream.StateTag)
                 {

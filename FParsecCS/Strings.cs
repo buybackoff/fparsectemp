@@ -3,26 +3,28 @@
 
 using System;
 
-namespace FParsec {
+// ReSharper disable InconsistentNaming
+
+namespace Spreads.Slang.FParsec {
 
 internal static class Strings {
 
-    static internal string Quote(string stringToQuote) {
+    internal static string Quote(string stringToQuote) {
         return Text.SingleQuote(stringToQuote);
     }
-    static internal string Quote(string prefix, string stringToQuote, string postfix) {
+    internal static string Quote(string prefix, string stringToQuote, string postfix) {
         return Text.SingleQuote(prefix, stringToQuote, postfix);
     }
 
-    static internal string AsciiQuote(string prefix, string stringToQuote, string postfix) {
+    internal static string AsciiQuote(string prefix, string stringToQuote, string postfix) {
         return Text.AsciiEscape(stringToQuote, prefix, "'", "'", postfix, '\'');
     }
 
-    static internal string QuoteCaseInsensitive(string caseInsensitiveStringToQuote) {
+    internal static string QuoteCaseInsensitive(string caseInsensitiveStringToQuote) {
         return Quote("", caseInsensitiveStringToQuote, " (case-insensitive)");
     }
 
-    static private string OrdinalEnding(int value) {
+    private static string OrdinalEnding(int value) {
         if (value < 1) throw new ArgumentOutOfRangeException("value", "The value must be greater than 0.");
         var n100 = value%100;
         var n10 = value%10;
@@ -201,28 +203,28 @@ internal static class Strings {
 
     public static string AnyCharIn(string chars) {
         //return Quote(Strings.AnyCharIn1, chars, Strings.AnyCharIn2);
-        return Strings.AnyCharIn1 + "‘" + chars + "’" + Strings.AnyCharIn2; // Review: Should we use different quotes if the string contains ‘ or ’ chars?
+        return AnyCharIn1 + "‘" + chars + "’" + AnyCharIn2; // Review: Should we use different quotes if the string contains ‘ or ’ chars?
     }
 
     public static string AnyCharNotIn(string chars) {
         //return Quote(Strings.AnyCharNotIn1, chars, Strings.AnyCharNotIn2);
-        return Strings.AnyCharNotIn1 + "‘" + chars + "’" + Strings.AnyCharNotIn2;
+        return AnyCharNotIn1 + "‘" + chars + "’" + AnyCharNotIn2;
     }
 
     public static string StringMatchingRegex(string regexPattern) {
-        return Quote(Strings.StringMatchingRegex1, regexPattern, Strings.StringMatchingRegex2);
+        return Quote(StringMatchingRegex1, regexPattern, StringMatchingRegex2);
     }
 
     public static string ExpectedAnySequenceOfNChars(int n) {
-        return Strings.AnySequenceOfNChars1 + n.ToString() + Strings.AnySequenceOfNChars2;
+        return AnySequenceOfNChars1 + n.ToString() + AnySequenceOfNChars2;
     }
 
     public static string CouldNotFindString(string str) {
-        return Quote(Strings.CouldNotFindString1, str, Strings.CouldNotFindString2);
+        return Quote(CouldNotFindString1, str, CouldNotFindString2);
     }
 
     public static string CouldNotFindCaseInsensitiveString(string str) {
-        return Quote(Strings.CouldNotFindCaseInsensitiveString1, str, Strings.CouldNotFindCaseInsensitiveString2);
+        return Quote(CouldNotFindCaseInsensitiveString1, str, CouldNotFindCaseInsensitiveString2);
     }
 
     internal static string OperatorToString<T,W,U>(Operator<T,W,U> op) {
@@ -234,7 +236,7 @@ internal static class Strings {
                     ? (op.IsAssociative ? "" : NonAssociative)
                     : (op.Associativity == Associativity.Left ? LeftAssociative :
                        op.Associativity == Associativity.Right ? RightAssociative : NonAssociative);
-        return String.Format(OperatorToStringFormat, type, opString, op.Precedence, comma, assoc);
+        return string.Format(OperatorToStringFormat, type, opString, op.Precedence, comma, assoc);
     }
 
     private static string RelativePosition(Position previousPosition, Position currentPosition) {

@@ -2,7 +2,7 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module FParsec.Internals
+module Spreads.Slang.FParsec.Internals
 
 open System.Diagnostics
 

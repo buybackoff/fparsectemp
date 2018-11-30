@@ -1,16 +1,16 @@
 ﻿// Copyright (c) Stephan Tolksdorf 2007-2009
 // License: Simplified BSD License. See accompanying documentation.
 
-module FParsec.Test.Test
+module Spreads.Slang.FParsec.Test.Test
 
 open System.Runtime.CompilerServices
 #if NETCORE
 open System.Reflection
 #endif
 
-open FParsec
-open FParsec.Error
-open FParsec.Primitives
+open Spreads.Slang.FParsec
+open Spreads.Slang.FParsec.Error
+open Spreads.Slang.FParsec.Primitives
 
 exception TestFailed of string
 
@@ -45,7 +45,7 @@ let ReferenceEqual (a: 't) (b: 't) =
 
 let private ROkE_ withNewline (content: string) nSkippedChars result error (parser: Parser<_,_>) =
     use stream = new CharStream<unit>(content, 0, content.Length)
-    let mutable reply = parser stream
+    let mutable reply = parser.Invoke stream
     if     reply.Status <> Ok
         || reply.Result <> result
         || reply.Error <> error
@@ -56,7 +56,7 @@ let private ROkE_ withNewline (content: string) nSkippedChars result error (pars
         stream.Seek(0L)
         stream.SetLine_WithoutCheckAndWithoutIncrementingTheStateTag(1L)
         stream.SetLineBegin_WithoutCheckAndWithoutIncrementingTheStateTag(0L)
-        reply <- parser stream
+        reply <- parser.Invoke stream
         reply.Status |> Equal Ok
         reply.Result |> Equal result
         reply.Error  |> Equal error
@@ -69,7 +69,7 @@ let ROkNL content nSkippedChars result parser = ROkE_ true  content nSkippedChar
 
 let private RError_ status (content: string) nSkippedChars error (parser: Parser<_,_>) =
     use stream = new CharStream<unit>(content, 0, content.Length)
-    let mutable reply = parser stream
+    let mutable reply = parser.Invoke stream
     if    reply.Status <> status
         || reply.Error <> error
         || stream.Index <> (int64 nSkippedChars)
@@ -78,7 +78,7 @@ let private RError_ status (content: string) nSkippedChars error (parser: Parser
         stream.Seek(0L)
         stream.SetLine_WithoutCheckAndWithoutIncrementingTheStateTag(1L)
         stream.SetLineBegin_WithoutCheckAndWithoutIncrementingTheStateTag(0L)
-        reply <- parser stream
+        reply <- parser.Invoke stream
         reply.Status |> Equal Error
         reply.Error  |> Equal error
         stream.Index |> Equal (int64 nSkippedChars)
@@ -102,13 +102,13 @@ let mutable checkParserRepeat = false
 let checkParser (parser1: Parser<'a,'u>) (parser2: Parser<'a,'u>) (stream: CharStream<'u>) =
     let state0 = stream.State
 
-    let mutable reply1 = parser1 stream
+    let mutable reply1 = parser1.Invoke stream
     let mutable state1 = stream.State
     let mutable index1 = stream.Index
 
     stream.BacktrackTo(state0)
 
-    let mutable reply2 = parser2 stream
+    let mutable reply2 = parser2.Invoke stream
     let mutable state2 = stream.State
     let mutable index2 = stream.Index
 
@@ -127,13 +127,13 @@ let checkParser (parser1: Parser<'a,'u>) (parser2: Parser<'a,'u>) (stream: CharS
 
         stream.BacktrackTo(state0)
 
-        reply1 <- parser1 stream
+        reply1 <- parser1.Invoke stream
         state1 <- stream.State
         index1 <- stream.Index
 
         stream.BacktrackTo(state0)
 
-        reply2 <- parser2 stream
+        reply2 <- parser2.Invoke stream
         state2 <- stream.State
         index2 <- stream.Index
 
@@ -155,7 +155,7 @@ let checkParserStr parser1 parser2 (str: string) =
     checkParser parser1 parser2 stream
 
 let constantTestParsers r e : Parser<'a, int>[] = [| // we rely on the order of these parsers
-    fun s -> Reply(Ok, r, e);
+    pdelegate <| fun s -> Reply(Ok, r, e);
     fun s -> s.UserState <- s.UserState + 1; Reply(Ok, r, e)
     fun s -> Reply(Error, e);
     fun s -> s.UserState <- s.UserState + 1; Reply(Error, e);

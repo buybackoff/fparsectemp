@@ -2,59 +2,63 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 
-using Microsoft.FSharp.Core;
-
-using FParsec;
-
-namespace FParsec {
-
-public static class Text {
-
-/// <summary>Detects the presence of an encoding preamble in the first count bytes of the byte buffer.
-/// If detectEncoding is false, this function only searches for the preamble of the given default encoding,
-/// otherwise also for any of the standard unicode byte order marks (UTF-8, UTF-16 LE/BE, UTF-32 LE/BE).
-/// If an encoding different from the given default encoding is detected, the new encoding
-/// is assigned to the encoding reference.
-/// Returns the number of bytes in the detected preamble, or 0 if no preamble is detected.
-/// </summary>
-internal static int DetectPreamble(byte[] buffer, int count, ref Encoding encoding, bool detectEncoding) {
-    Debug.Assert(count >= 0);
-    if (detectEncoding && count >= 2) {
-        switch (buffer[0]) {
-        case 0xEF:
-            if (buffer[1] == 0xBB && count > 2 && buffer[2] == 0xBF) {
-            #if !PCL
-                if (encoding.CodePage != 65001)
-            #else
+namespace Spreads.Slang.FParsec
+{
+    public static class Text
+    {
+        /// <summary>Detects the presence of an encoding preamble in the first count bytes of the byte buffer.
+        /// If detectEncoding is false, this function only searches for the preamble of the given default encoding,
+        /// otherwise also for any of the standard unicode byte order marks (UTF-8, UTF-16 LE/BE, UTF-32 LE/BE).
+        /// If an encoding different from the given default encoding is detected, the new encoding
+        /// is assigned to the encoding reference.
+        /// Returns the number of bytes in the detected preamble, or 0 if no preamble is detected.
+        /// </summary>
+        internal static int DetectPreamble(byte[] buffer, int count, ref Encoding encoding, bool detectEncoding)
+        {
+            Debug.Assert(count >= 0);
+            if (detectEncoding && count >= 2)
+            {
+                switch (buffer[0])
+                {
+                    case 0xEF:
+                        if (buffer[1] == 0xBB && count > 2 && buffer[2] == 0xBF)
+                        {
+#if !PCL
+                            if (encoding.CodePage != 65001)
+#else
                 if (encoding.WebName != "utf-8")
-            #endif
-                    encoding = Encoding.UTF8;
-                return 3;
-            }
-        break;
-        case 0xFE:
-            if (buffer[1] == 0xFF) {
-            #if !PCL
-                if (encoding.CodePage != 1201)
-            #else
+#endif
+                                encoding = Encoding.UTF8;
+                            return 3;
+                        }
+                        break;
+
+                    case 0xFE:
+                        if (buffer[1] == 0xFF)
+                        {
+#if !PCL
+                            if (encoding.CodePage != 1201)
+#else
                 if (encoding.WebName != "utf-16BE")
-            #endif
-                    encoding = Encoding.BigEndianUnicode;
-                return 2;
-            }
-        break;
-        case 0xFF:
-            if (buffer[1] == 0xFE) {
-                if (count >= 4 && buffer[2] == 0x00 && buffer[3] == 0x00) {
-                #if !PCL
-                    if (encoding.CodePage != 12000)
-                        encoding = Encoding.UTF32; // UTF-32 little endian
-                #else
+#endif
+                                encoding = Encoding.BigEndianUnicode;
+                            return 2;
+                        }
+                        break;
+
+                    case 0xFF:
+                        if (buffer[1] == 0xFE)
+                        {
+                            if (count >= 4 && buffer[2] == 0x00 && buffer[3] == 0x00)
+                            {
+#if !PCL
+                                if (encoding.CodePage != 12000)
+                                    encoding = Encoding.UTF32; // UTF-32 little endian
+#else
                     if (encoding.WebName != "utf-32") {
                         try {
                           encoding = Encoding.GetEncoding("utf-32");
@@ -62,25 +66,29 @@ internal static int DetectPreamble(byte[] buffer, int count, ref Encoding encodi
                           throw new NotSupportedException("An UTF-32 input encoding was detected, which is not supported on this system.");
                         }
                     }
-                #endif
-                    return 4;
-                } else {
-                #if !PCL
-                    if (encoding.CodePage != 1200)
-                #else
+#endif
+                                return 4;
+                            }
+                            else
+                            {
+#if !PCL
+                                if (encoding.CodePage != 1200)
+#else
                     if (encoding.WebName != "utf-16")
-                #endif
-                        encoding = Encoding.Unicode; // UTF-16 little endian
-                    return 2;
-                }
-            }
-        break;
-        case 0x00:
-            if (buffer[1] == 0x00 && count >= 4 && buffer[2] == 0xFE && buffer[3] == 0xFF) {
-            #if !PCL
-                if (encoding.CodePage != 12001)
-                    encoding = new UTF32Encoding(true, true); // UTF-32 big endian
-            #else
+#endif
+                                    encoding = Encoding.Unicode; // UTF-16 little endian
+                                return 2;
+                            }
+                        }
+                        break;
+
+                    case 0x00:
+                        if (buffer[1] == 0x00 && count >= 4 && buffer[2] == 0xFE && buffer[3] == 0xFF)
+                        {
+#if !PCL
+                            if (encoding.CodePage != 12001)
+                                encoding = new UTF32Encoding(true, true); // UTF-32 big endian
+#else
                 if (encoding.WebName != "utf-32BE") {
                     try {
                         encoding = Encoding.GetEncoding("utf-32BE");
@@ -88,21 +96,23 @@ internal static int DetectPreamble(byte[] buffer, int count, ref Encoding encodi
                         throw new NotSupportedException("An UTF-32 (big endian) input encoding was detected, which is not supported on this system.");
                     }
                 }
-            #endif
-                return 4;
+#endif
+                            return 4;
+                        }
+                        break;
+                }
             }
-        break;
+            byte[] preamble = encoding.GetPreamble();
+            if (preamble.Length > 0 && count >= preamble.Length)
+            {
+                int i = 0;
+                while (buffer[i] == preamble[i])
+                {
+                    if (++i == preamble.Length) return preamble.Length;
+                }
+            }
+            return 0;
         }
-    }
-    byte[] preamble = encoding.GetPreamble();
-    if (preamble.Length > 0 && count >= preamble.Length) {
-        int i = 0;
-        while (buffer[i] == preamble[i]) {
-            if (++i == preamble.Length) return preamble.Length;
-        }
-    }
-    return 0;
-}
 
 #if !LOW_TRUST
 /// <summary>Reads all remaining chars into the given buffer. If the remaining stream
@@ -130,32 +140,38 @@ internal unsafe static int ReadAllRemainingCharsFromStream(char* buffer, int max
 }
 #endif
 
-
-/// <summary>Returns a case-folded copy of the string argument. All chars are mapped
-/// using the (non-Turkic) 1-to-1 case folding mappings (v. 6.0) for Unicode code
-/// points in the Basic Multilingual Plane, i.e. code points below 0x10000.
-/// If the argument is null, null is returned.</summary>
+        /// <summary>Returns a case-folded copy of the string argument. All chars are mapped
+        /// using the (non-Turkic) 1-to-1 case folding mappings (v. 6.0) for Unicode code
+        /// points in the Basic Multilingual Plane, i.e. code points below 0x10000.
+        /// If the argument is null, null is returned.</summary>
 #if LOW_TRUST
-static public string FoldCase(string str) {
-    char[] cftable = CaseFoldTable.FoldedChars;
-    if (str != null) {
-        for (int i = 0; i < str.Length; ++i) {
-            char c   = str[i];
-            char cfc = cftable[c];
-            if (c != cfc) {
-                StringBuilder sb = new StringBuilder(str);
-                sb[i++] = cfc;
-                for (; i < str.Length; ++i) {
-                    c   = str[i];
-                    cfc = cftable[c];
-                    if (c != cfc) sb[i] = cfc;
+
+        static public string FoldCase(string str)
+        {
+            char[] cftable = CaseFoldTable.FoldedChars;
+            if (str != null)
+            {
+                for (int i = 0; i < str.Length; ++i)
+                {
+                    char c = str[i];
+                    char cfc = cftable[c];
+                    if (c != cfc)
+                    {
+                        StringBuilder sb = new StringBuilder(str);
+                        sb[i++] = cfc;
+                        for (; i < str.Length; ++i)
+                        {
+                            c = str[i];
+                            cfc = cftable[c];
+                            if (c != cfc) sb[i] = cfc;
+                        }
+                        return sb.ToString();
+                    }
                 }
-                return sb.ToString();
             }
+            return str;
         }
-    }
-    return str;
-}
+
 #else
 static unsafe public string FoldCase(string str) {
     if (str != null) {
@@ -189,79 +205,103 @@ static unsafe public string FoldCase(string str) {
 #if !LOW_TRUST
     unsafe
 #endif
-static public char FoldCase(char ch) {
-    return CaseFoldTable.FoldedChars[ch];
-}
 
-internal static int FindNewlineOrEOSChar(string str) {
-    int i;
-    for (i = 0; i < str.Length; ++i) {
-        char c = str[i];
-        // '\n' = '\u000A', '\r' = '\u000D'
-        if (unchecked((uint)c - 0xEu) < 0xFFFFu - 0xEu) continue;
-        if (c == '\n' || c == '\r' || c == '\uffff') goto Return;
-    }
-    i = -1;
-Return:
-    return i;
-}
+        static public char FoldCase(char ch)
+        {
+            return CaseFoldTable.FoldedChars[ch];
+        }
 
-/// <summary>Returns the given string with all occurrences of "\r\n" and "\r" replaced
-/// by "\n". If the argument is null, null is returned.</summary>
+        internal static int FindNewlineOrEOSChar(string str)
+        {
+            int i;
+            for (i = 0; i < str.Length; ++i)
+            {
+                char c = str[i];
+                // '\n' = '\u000A', '\r' = '\u000D'
+                if (unchecked((uint)c - 0xEu) < 0xFFFFu - 0xEu) continue;
+                if (c == '\n' || c == '\r' || c == '\uffff') goto Return;
+            }
+            i = -1;
+        Return:
+            return i;
+        }
+
+        /// <summary>Returns the given string with all occurrences of "\r\n" and "\r" replaced
+        /// by "\n". If the argument is null, null is returned.</summary>
 #if LOW_TRUST
-static public string NormalizeNewlines(string str) {
-    if (str == null || str.Length == 0) return str;
-    int nCR   = 0;
-    int nCRLF = 0;
-    for (int i = 0; i < str.Length; ++i) {
-        if (str[i] == '\r') {
-            if (i + 1 < str.Length && str[i + 1] == '\n') ++nCRLF;
-            else ++nCR;
-        }
-    }
-    if (nCRLF == 0) {
-        return nCR == 0 ? str : str.Replace('\r', '\n');
-    } else {
-        return CopyWithNormalizedNewlines(str, 0, str.Length, nCRLF, nCR);
-    }
-}
-static internal string CopyWithNormalizedNewlines(string src, int index, int length, int nCRLF, int nCR) {
-    Debug.Assert(length > 0 && nCRLF >= 0 && nCR >= 0 && (nCRLF | nCR) != 0);
-    if (nCRLF != 0) {
-        StringBuilder sb = new StringBuilder(length - nCRLF);
-        int end = index + length;
-        int i0 = index;
-        if (nCR == 0) {
-            int nn = nCRLF;
-            int i = index;
-            for (;;) {
-                char c = src[i++];
-                if (c == '\r') {
-                    sb.Append(src, i0, i - i0 - 1).Append('\n');
-                    ++i; // skip over the '\n' in "\r\n"
-                    i0 = i;
-                    if (--nn == 0) break;
+
+        static public string NormalizeNewlines(string str)
+        {
+            if (str == null || str.Length == 0) return str;
+            int nCR = 0;
+            int nCRLF = 0;
+            for (int i = 0; i < str.Length; ++i)
+            {
+                if (str[i] == '\r')
+                {
+                    if (i + 1 < str.Length && str[i + 1] == '\n') ++nCRLF;
+                    else ++nCR;
                 }
             }
-        } else {
-            int nn = nCRLF + nCR;
-            int i = index;
-            for (;;) {
-                char c = src[i++];
-                if (c == '\r') {
-                    sb.Append(src, i0, i - i0 - 1).Append('\n');
-                    if (i < end && src[i] == '\n') ++i; // skip over the '\n' in "\r\n"
-                    i0 = i;
-                    if (--nn == 0) break;
-                }
+            if (nCRLF == 0)
+            {
+                return nCR == 0 ? str : str.Replace('\r', '\n');
+            }
+            else
+            {
+                return CopyWithNormalizedNewlines(str, 0, str.Length, nCRLF, nCR);
             }
         }
-        if (i0 < end) sb.Append(src, i0, end - i0);
-        return sb.ToString();
-    } else {
-        return new StringBuilder(src, index, length, length).Replace('\r', '\n').ToString();
-    }
-}
+
+        static internal string CopyWithNormalizedNewlines(string src, int index, int length, int nCRLF, int nCR)
+        {
+            Debug.Assert(length > 0 && nCRLF >= 0 && nCR >= 0 && (nCRLF | nCR) != 0);
+            if (nCRLF != 0)
+            {
+                StringBuilder sb = new StringBuilder(length - nCRLF);
+                int end = index + length;
+                int i0 = index;
+                if (nCR == 0)
+                {
+                    int nn = nCRLF;
+                    int i = index;
+                    for (; ; )
+                    {
+                        char c = src[i++];
+                        if (c == '\r')
+                        {
+                            sb.Append(src, i0, i - i0 - 1).Append('\n');
+                            ++i; // skip over the '\n' in "\r\n"
+                            i0 = i;
+                            if (--nn == 0) break;
+                        }
+                    }
+                }
+                else
+                {
+                    int nn = nCRLF + nCR;
+                    int i = index;
+                    for (; ; )
+                    {
+                        char c = src[i++];
+                        if (c == '\r')
+                        {
+                            sb.Append(src, i0, i - i0 - 1).Append('\n');
+                            if (i < end && src[i] == '\n') ++i; // skip over the '\n' in "\r\n"
+                            i0 = i;
+                            if (--nn == 0) break;
+                        }
+                    }
+                }
+                if (i0 < end) sb.Append(src, i0, end - i0);
+                return sb.ToString();
+            }
+            else
+            {
+                return new StringBuilder(src, index, length, length).Replace('\r', '\n').ToString();
+            }
+        }
+
 #else
 static unsafe public string NormalizeNewlines(string str) {
     int length;
@@ -336,7 +376,7 @@ static unsafe internal string CopyWithNormalizedNewlines(char* src, int length, 
             }
         }
         // copy remaining chars
-        #if UNALIGNED_READS
+#if UNALIGNED_READS
             if (src != end) {
                 uint len = Buffer.PositiveDistance(src, end);
                 if ((unchecked((int)dst) & 2) != 0) { // align dest
@@ -363,126 +403,147 @@ static unsafe internal string CopyWithNormalizedNewlines(char* src, int length, 
                     *dst = *src;
                 }
             }
-        #else
+#else
             while (src < end) {
                 *dst = *src;
                 ++src; ++dst;
             }
-        #endif
+#endif
     }
     return newString;
 }
 #endif
 
-
-/// <summary>A faster implementation of System.Globalization.StringInfo(str).LengthInTextElements.</summary>
-public static int CountTextElements(string str) {
-    int count = 0;
-    int end = str.Length;
-    int i = 0;
-    for (;;) {
-    SkipBaseCharacter:
-        if (i >= end) break;
-        char c = str[i];
-        ++i;
-        ++count;
-        if (c < ' ') continue; // control char
-        if (c > '~') {
-            var uc = CharUnicodeInfo.GetUnicodeCategory(c);
-        Switch:
-            switch (uc) {
-            case UnicodeCategory.Surrogate:
-                uc = CharUnicodeInfo.GetUnicodeCategory(str, i - 1);
-                if (uc == UnicodeCategory.Surrogate) continue;
+        /// <summary>A faster implementation of System.Globalization.StringInfo(str).LengthInTextElements.</summary>
+        public static int CountTextElements(string str)
+        {
+            int count = 0;
+            int end = str.Length;
+            int i = 0;
+            for (; ; )
+            {
+            SkipBaseCharacter:
+                if (i >= end) break;
+                char c = str[i];
                 ++i;
-                goto Switch;
-            case UnicodeCategory.NonSpacingMark:
-            case UnicodeCategory.SpacingCombiningMark:
-            case UnicodeCategory.EnclosingMark:
-            case UnicodeCategory.Control:
-            case UnicodeCategory.Format:
-            case UnicodeCategory.OtherNotAssigned:
-                continue;
-            // adding these cases to the default branch prevents
-            // the MS C# compiler from splitting the jump table
-            case UnicodeCategory.OtherNumber:
-            case UnicodeCategory.DashPunctuation:
-            case UnicodeCategory.ClosePunctuation:
-            case UnicodeCategory.InitialQuotePunctuation:
-            case UnicodeCategory.OtherPunctuation:
-            case UnicodeCategory.ModifierSymbol:
-            default:
-                break; // exits the switch, not the loop
-            }
-        }
-    // SkipMoreBaseCharactersOrCombiningMarks:
-        for (;;) {
-            if (i >= end) break;
-            c = str[i];
-            ++i;
-            if (c >= ' ') {
-                if (c <= '~') {
-                    ++count;
-                    continue;
-                }
-            } else { // control char
                 ++count;
-                goto SkipBaseCharacter;
-            }
-            var uc = CharUnicodeInfo.GetUnicodeCategory(c);
-        Switch:
-            switch (uc) {
-            case UnicodeCategory.NonSpacingMark:
-            case UnicodeCategory.SpacingCombiningMark:
-            case UnicodeCategory.EnclosingMark:
-                continue;
-            case UnicodeCategory.Surrogate:
-                uc = CharUnicodeInfo.GetUnicodeCategory(str, i - 1);
-                if (uc != UnicodeCategory.Surrogate) {
+                if (c < ' ') continue; // control char
+                if (c > '~')
+                {
+                    var uc = CharUnicodeInfo.GetUnicodeCategory(c);
+                Switch:
+                    switch (uc)
+                    {
+                        case UnicodeCategory.Surrogate:
+                            uc = CharUnicodeInfo.GetUnicodeCategory(str, i - 1);
+                            if (uc == UnicodeCategory.Surrogate) continue;
+                            ++i;
+                            goto Switch;
+                        case UnicodeCategory.NonSpacingMark:
+                        case UnicodeCategory.SpacingCombiningMark:
+                        case UnicodeCategory.EnclosingMark:
+                        case UnicodeCategory.Control:
+                        case UnicodeCategory.Format:
+                        case UnicodeCategory.OtherNotAssigned:
+                            continue;
+                        // adding these cases to the default branch prevents
+                        // the MS C# compiler from splitting the jump table
+                        case UnicodeCategory.OtherNumber:
+                        case UnicodeCategory.DashPunctuation:
+                        case UnicodeCategory.ClosePunctuation:
+                        case UnicodeCategory.InitialQuotePunctuation:
+                        case UnicodeCategory.OtherPunctuation:
+                        case UnicodeCategory.ModifierSymbol:
+                        default:
+                            break; // exits the switch, not the loop
+                    }
+                }
+                // SkipMoreBaseCharactersOrCombiningMarks:
+                for (; ; )
+                {
+                    if (i >= end) break;
+                    c = str[i];
                     ++i;
-                    goto Switch;
+                    if (c >= ' ')
+                    {
+                        if (c <= '~')
+                        {
+                            ++count;
+                            continue;
+                        }
+                    }
+                    else
+                    { // control char
+                        ++count;
+                        goto SkipBaseCharacter;
+                    }
+                    var uc = CharUnicodeInfo.GetUnicodeCategory(c);
+                Switch:
+                    switch (uc)
+                    {
+                        case UnicodeCategory.NonSpacingMark:
+                        case UnicodeCategory.SpacingCombiningMark:
+                        case UnicodeCategory.EnclosingMark:
+                            continue;
+                        case UnicodeCategory.Surrogate:
+                            uc = CharUnicodeInfo.GetUnicodeCategory(str, i - 1);
+                            if (uc != UnicodeCategory.Surrogate)
+                            {
+                                ++i;
+                                goto Switch;
+                            }
+                            ++count;
+                            goto SkipBaseCharacter;
+                        case UnicodeCategory.Control:
+                        case UnicodeCategory.Format:
+                        case UnicodeCategory.OtherNotAssigned:
+                            ++count;
+                            goto SkipBaseCharacter;
+                        // adding these cases to the default branch prevents
+                        // the MS C# compiler from splitting the jump table
+                        case UnicodeCategory.OtherNumber:
+                        case UnicodeCategory.DashPunctuation:
+                        case UnicodeCategory.ClosePunctuation:
+                        case UnicodeCategory.InitialQuotePunctuation:
+                        case UnicodeCategory.OtherPunctuation:
+                        case UnicodeCategory.ModifierSymbol:
+                        default:
+                            ++count;
+                            continue;
+                    }
                 }
-                ++count;
-                goto SkipBaseCharacter;
-            case UnicodeCategory.Control:
-            case UnicodeCategory.Format:
-            case UnicodeCategory.OtherNotAssigned:
-                ++count;
-                goto SkipBaseCharacter;
-            // adding these cases to the default branch prevents
-            // the MS C# compiler from splitting the jump table
-            case UnicodeCategory.OtherNumber:
-            case UnicodeCategory.DashPunctuation:
-            case UnicodeCategory.ClosePunctuation:
-            case UnicodeCategory.InitialQuotePunctuation:
-            case UnicodeCategory.OtherPunctuation:
-            case UnicodeCategory.ModifierSymbol:
-            default:
-                ++count;
-                continue;
+                break;
             }
+            return count;
         }
-        break;
-    }
-    return count;
-}
 
-// Apparently System.Char.Is(High|Low)Surrogate is not safe for consumption by Silverlight developers
+        // Apparently System.Char.Is(High|Low)Surrogate is not safe for consumption by Silverlight developers
 
-public static bool IsSurrogate(char ch)     { return (ch & 0xF800) == 0xD800; }
-public static bool IsHighSurrogate(char ch) { return (ch & 0xFC00) == 0xD800; }
-public static bool IsLowSurrogate(char ch)  { return (ch & 0xFC00) == 0xDC00; }
+        public static bool IsSurrogate(char ch)
+        {
+            return (ch & 0xF800) == 0xD800;
+        }
+
+        public static bool IsHighSurrogate(char ch)
+        {
+            return (ch & 0xFC00) == 0xD800;
+        }
+
+        public static bool IsLowSurrogate(char ch)
+        {
+            return (ch & 0xFC00) == 0xDC00;
+        }
 
 #if LOW_TRUST
 
-public static bool IsWhitespace(char ch) {
-    return System.Char.IsWhiteSpace(ch);
-}
+        public static bool IsWhitespace(char ch)
+        {
+            return System.Char.IsWhiteSpace(ch);
+        }
 
 #else
 
 internal unsafe struct IsWhitespaceHelper {
-
     // we use the same data structure and algorithm as for IdentifierValidator
 
     private static readonly byte[] DataArray = {
@@ -551,44 +612,51 @@ public static bool IsWhitespace(char ch) { // should get inlined
 #if !LOW_TRUST
     unsafe
 #endif
-internal static string HexEscape(char c) {
+
+        internal static string HexEscape(char c)
+        {
 #if LOW_TRUST
-    char[] cs = new char[6];
+            char[] cs = new char[6];
 #else
     char* cs = stackalloc char[6];
 #endif
-    cs[0] = '\\';
-    cs[1] = 'u';
-    int n = c;
-    for (int j = 0; j < 4; ++j) {
-        cs[5 - j] = "0123456789abcdef"[n & 0xf];
-        n >>= 4;
-    }
-    return new string(cs, 0, 6);
-}
+            cs[0] = '\\';
+            cs[1] = 'u';
+            int n = c;
+            for (int j = 0; j < 4; ++j)
+            {
+                cs[5 - j] = "0123456789abcdef"[n & 0xf];
+                n >>= 4;
+            }
+            return new string(cs, 0, 6);
+        }
 
-internal static string EscapeChar(char c) {
-    switch (c) {
-    case '\\': return "\\\\";
-    case '\'': return "\\\'";
-    case '\"': return "\\\"";
-    case '\r': return "\\r";
-    case '\n': return "\\n";
-    case '\t': return "\\t";
-    case '\f': return "\\f";
-    case '\v': return "\\v";
-    case '\a': return "\\a";
-    case '\b': return "\\b";
-    default:   return HexEscape(c);
-    }
-}
+        internal static string EscapeChar(char c)
+        {
+            switch (c)
+            {
+                case '\\': return "\\\\";
+                case '\'': return "\\\'";
+                case '\"': return "\\\"";
+                case '\r': return "\\r";
+                case '\n': return "\\n";
+                case '\t': return "\\t";
+                case '\f': return "\\f";
+                case '\v': return "\\v";
+                case '\a': return "\\a";
+                case '\b': return "\\b";
+                default: return HexEscape(c);
+            }
+        }
 
 #if !LOW_TRUST
     unsafe
 #endif
-internal static string Concat(string str0, string str1, string str2, string str3, string str4) {
+
+        internal static string Concat(string str0, string str1, string str2, string str3, string str4)
+        {
 #if LOW_TRUST
-    return str0 + str1 + str2 + str3 + str4;
+            return str0 + str1 + str2 + str3 + str4;
 #else
     int length = str0.Length + str1.Length + str2.Length + str3.Length + str4.Length;
     var str = new string('\u0000', length);
@@ -602,78 +670,89 @@ internal static string Concat(string str0, string str1, string str2, string str3
     }
     return str;
 #endif
-}
-
-internal static string Escape(string str, string prefix1, string prefix2, string postfix1, string postfix2, char escapedQuoteChar) {
-    Debug.Assert(str != null && prefix1 != null && prefix2 != null && postfix1 != null && postfix2 != null);
-    StringBuilder sb = null;
-    int i0 = 0;
-    int i = 0;
-    for (;;) {
-        if (i >= str.Length) break;
-        char c = str[i];
-        ++i;
-        if (c > '\'' && c < '\u007f') {
-            if (c != '\\') continue;
-        } else if (c == ' ' || (   !Char.IsControl(c) && c != escapedQuoteChar
-                                && (c < '\u2028' || c > '\u2029'))) continue;
-        if ((object)sb == null) {
-            sb = new StringBuilder(str.Length + prefix1.Length + prefix2.Length + postfix1.Length + postfix2.Length + 8);
-            sb.Append(prefix1).Append(prefix2);
         }
-        int n = i - i0 - 1;
-        if (n != 0) sb.Append(str, i0, n);
-        i0 = i;
-        sb.Append(EscapeChar(c));
-    }
-    if ((object)sb == null) return Concat(prefix1, prefix2, str, postfix1, postfix2);
-    if (i0 != i) sb.Append(str, i0, i - i0);
-    return sb.Append(postfix1).Append(postfix2).ToString();
-}
 
-internal static string AsciiEscape(string str, string prefix1, string prefix2, string postfix1, string postfix2, char escapedQuoteChar) {
-    Debug.Assert(str != null && prefix1 != null && prefix2 != null && postfix1 != null && postfix2 != null);
-    StringBuilder sb = null;
-    int i0 = 0;
-    int i = 0;
-    for (;;) {
-        if (i >= str.Length) break;
-        char c = str[i];
-        ++i;
-        if (c > '\'' && c < '\u007f') {
-            if (c != '\\') continue;
-        } else if (c == ' ' || (c >= ' ' &&  c <= '\'' && c != escapedQuoteChar)) continue;
-        if ((object)sb == null) {
-            sb = new StringBuilder(str.Length + prefix1.Length + prefix2.Length + postfix1.Length + postfix2.Length + 8);
-            sb.Append(prefix1).Append(prefix2);
+        internal static string Escape(string str, string prefix1, string prefix2, string postfix1, string postfix2, char escapedQuoteChar)
+        {
+            Debug.Assert(str != null && prefix1 != null && prefix2 != null && postfix1 != null && postfix2 != null);
+            StringBuilder sb = null;
+            int i0 = 0;
+            int i = 0;
+            for (; ; )
+            {
+                if (i >= str.Length) break;
+                char c = str[i];
+                ++i;
+                if (c > '\'' && c < '\u007f')
+                {
+                    if (c != '\\') continue;
+                }
+                else if (c == ' ' || (!Char.IsControl(c) && c != escapedQuoteChar
+                                      && (c < '\u2028' || c > '\u2029'))) continue;
+                if ((object)sb == null)
+                {
+                    sb = new StringBuilder(str.Length + prefix1.Length + prefix2.Length + postfix1.Length + postfix2.Length + 8);
+                    sb.Append(prefix1).Append(prefix2);
+                }
+                int n = i - i0 - 1;
+                if (n != 0) sb.Append(str, i0, n);
+                i0 = i;
+                sb.Append(EscapeChar(c));
+            }
+            if ((object)sb == null) return Concat(prefix1, prefix2, str, postfix1, postfix2);
+            if (i0 != i) sb.Append(str, i0, i - i0);
+            return sb.Append(postfix1).Append(postfix2).ToString();
         }
-        int n = i - i0 - 1;
-        if (n != 0) sb.Append(str, i0, n);
-        i0 = i;
-        sb.Append(EscapeChar(c));
-    }
-    if ((object)sb == null) return Concat(prefix1, prefix2, str, postfix1, postfix2);
-    if (i0 != i) sb.Append(str, i0, i - i0);
-    return sb.Append(postfix1).Append(postfix2).ToString();
-}
 
-internal static string SingleQuote(string str) {
-    return Escape(str, "", "'", "'", "", '\'');
-}
+        internal static string AsciiEscape(string str, string prefix1, string prefix2, string postfix1, string postfix2, char escapedQuoteChar)
+        {
+            Debug.Assert(str != null && prefix1 != null && prefix2 != null && postfix1 != null && postfix2 != null);
+            StringBuilder sb = null;
+            int i0 = 0;
+            int i = 0;
+            for (; ; )
+            {
+                if (i >= str.Length) break;
+                char c = str[i];
+                ++i;
+                if (c > '\'' && c < '\u007f')
+                {
+                    if (c != '\\') continue;
+                }
+                else if (c == ' ' || (c >= ' ' && c <= '\'' && c != escapedQuoteChar)) continue;
+                if ((object)sb == null)
+                {
+                    sb = new StringBuilder(str.Length + prefix1.Length + prefix2.Length + postfix1.Length + postfix2.Length + 8);
+                    sb.Append(prefix1).Append(prefix2);
+                }
+                int n = i - i0 - 1;
+                if (n != 0) sb.Append(str, i0, n);
+                i0 = i;
+                sb.Append(EscapeChar(c));
+            }
+            if ((object)sb == null) return Concat(prefix1, prefix2, str, postfix1, postfix2);
+            if (i0 != i) sb.Append(str, i0, i - i0);
+            return sb.Append(postfix1).Append(postfix2).ToString();
+        }
 
-internal static string SingleQuote(string prefix, string str, string postfix) {
-    return Escape(str, prefix, "'", "'", postfix, '\'');
-}
+        internal static string SingleQuote(string str)
+        {
+            return Escape(str, "", "'", "'", "", '\'');
+        }
 
-internal static string DoubleQuote(string str) {
-    return Escape(str, "", "\"", "\"", "", '"');
-}
+        internal static string SingleQuote(string prefix, string str, string postfix)
+        {
+            return Escape(str, prefix, "'", "'", postfix, '\'');
+        }
 
-internal static string DoubleQuote(string prefix, string str, string postfix) {
-    return Escape(str, prefix, "\"", "\"", postfix, '"');
-}
+        internal static string DoubleQuote(string str)
+        {
+            return Escape(str, "", "\"", "\"", "", '"');
+        }
 
-
-} // class Text
-
+        internal static string DoubleQuote(string prefix, string str, string postfix)
+        {
+            return Escape(str, prefix, "\"", "\"", postfix, '"');
+        }
+    } // class Text
 }

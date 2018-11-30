@@ -6,7 +6,7 @@
 ////////////////////////
 module Calculator 
 
-open FParsec
+open Spreads.Slang.FParsec
 
 let ws = spaces // skips any whitespace
 

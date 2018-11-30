@@ -2,10 +2,10 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 [<AutoOpen>]
-module FParsec.Primitives
+module Spreads.Slang.FParsec.Primitives
 
-open FParsec
-open FParsec.Error
+open Spreads.Slang.FParsec
+open Spreads.Slang.FParsec.Error
 
 /// The parser succeeded.
 [<Literal>] val Ok:         ReplyStatus = ReplyStatus.Ok;;
@@ -31,7 +31,7 @@ val preturn: 'a -> Parser<'a,'u>
 
 /// The parser `pzero` always fails with an empty error message list, i.e. an unspecified error.
 /// `pzero x` is defined as `fun stream -> Reply(Error, NoErrorMessages)`.
-// val pzero: Parser<'a,'u>
+val pzero<'a,'u> : Parser<'a,'u>
 
 // ---------------------------
 // Chaining and piping parsers

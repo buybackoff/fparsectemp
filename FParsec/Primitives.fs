@@ -2,12 +2,12 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 [<AutoOpen>]
-module FParsec.Primitives
+module Spreads.Slang.FParsec.Primitives
 
 open System.Runtime.CompilerServices
 
-open FParsec.Internals
-open FParsec.Error
+open Spreads.Slang.FParsec.Internals
+open Spreads.Slang.FParsec.Error
 
 [<Literal>]
 let Ok         = ReplyStatus.Ok
@@ -28,9 +28,10 @@ let udof<'a> = Unchecked.defaultof<'a>
 // =================================
 
 let preturn x : Parser<_,_> = { new Parser<_,_>() with override __.InvokeImpl(stream) = Reply(x) }
-//let pzero: Parser<'a,'u> = 
-//  let (x: Parser<'a,'u>) = { new Parser<'a,'u>() with override __.Invoke(stream: CharStream<'u>) = new Reply<'a>() } //fun stream -> Reply()
-//  x
+
+let pzero<'a,'u> = 
+   { new Parser<'a,'u>() with override __.InvokeImpl(stream: CharStream<'u>) = new Reply<_>() }
+  
 
 // ---------------------------
 // Chaining and piping parsers

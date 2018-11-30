@@ -1,12 +1,9 @@
 ﻿// Copyright (c) Stephan Tolksdorf 2009-2012
 // License: Simplified BSD License. See accompanying documentation.
 
-using System;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 
-namespace FParsec {
+namespace Spreads.Slang.FParsec {
 
 internal static class CaseFoldTable {
 #if LOW_TRUST

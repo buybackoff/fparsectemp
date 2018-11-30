@@ -2,8 +2,9 @@
 // License: Simplified BSD License. See accompanying documentation.
 
 [<AutoOpen>]
-module FParsec.CharParsers
+module Spreads.Slang.FParsec.CharParsers
 
+open System
 open System.Text.RegularExpressions
 
 open Error
@@ -36,22 +37,6 @@ val runParserOnString: Parser<'a,'u> -> 'u -> streamName: string -> string -> Pa
 /// The parser's `Reply` is captured and returned as a `ParserResult` value.
 val runParserOnSubstring: Parser<'a,'u> -> 'u -> streamName: string -> string -> int -> int -> ParserResult<'a,'u>
 
-/// `runParserOnStream p ustate streamName stream encoding` runs the parser `p` on the content of
-/// the `System.IO.Stream` `stream`, starting with the initial user state `ustate`. The `streamName`
-/// is used in error messages to describe the source of the input (e.g. a file path) and may be empty.
-/// In case no unicode byte order mark is found, the stream data is assumed to be encoded with the given `encoding`.
-/// The parser's `Reply` is captured and returned as a `ParserResult` value.
-val runParserOnStream:    Parser<'a,'u> -> 'u -> streamName: string -> System.IO.Stream -> System.Text.Encoding -> ParserResult<'a,'u>
-
-#if PCL
-#else
-/// `runParserOnFile p ustate path encoding` runs the parser `p` on the content of the file
-/// at the given `path`, starting with the initial user state `ustate`.
-/// In case no unicode byte order mark is found, the file data is assumed to be encoded with the given `encoding`.
-/// The parser's `Reply` is captured and returned as a `ParserResult` value.
-val runParserOnFile: Parser<'a,'u> -> 'u -> path: string -> System.Text.Encoding -> ParserResult<'a,'u>
-#endif
-
 /// `run parser str` is a convenient abbreviation for `runParserOnString parser () "" str`.
 val run: Parser<'Result, unit> -> string -> ParserResult<'Result,unit>
 
@@ -67,11 +52,11 @@ val run: Parser<'Result, unit> -> string -> ParserResult<'Result,unit>
 
 /// The parser `getPosition` returns the current position in the input Stream.
 /// `getPosition` is equivalent to `fun stream -> Reply(stream.Position)`.
-val getPosition: Parser<Position,'u>
+val getPosition<'u> : Parser<Position,'u>
 
 /// The parser `getUserState` returns the current user state.
 /// `getUserState` is equivalent to `fun stream -> Reply(stream.UserState)`.
-val getUserState: Parser<'u,'u>
+val getUserState<'u> : Parser<'u,'u>
 
 /// The parser `setUserState u` sets the user state to `u`.
 /// `setUserState u` is equivalent to `fun stream -> stream.UserState <- u; Reply(())`.
@@ -101,10 +86,10 @@ val charReturn: char -> 'a -> Parser<'a,'u>
 
 /// `anyChar` parses any single char or newline ("\n", "\r\n" or "\r").
 /// Returns the parsed char, or '\n' in case a newline was parsed.
-val anyChar: Parser<char,'u>
+val anyChar<'u> : Parser<char,'u>
 
 /// `skipAnyChar` is an optimized implementation of `anyChar |>> ignore`.
-val skipAnyChar: Parser<unit,'u>
+val skipAnyChar<'u> : Parser<unit,'u>
 
 
 /// `satisfy f` parses any one char or newline for which the predicate function `f` returns `true`.
@@ -144,34 +129,34 @@ val skipNoneOf: seq<char> -> Parser<unit,'u>
 
 
 /// Parses any char in the range 'A' - 'Z'. Returns the parsed char.
-val asciiUpper: Parser<char,'u>
+val asciiUpper<'u> : Parser<char,'u>
 
 /// Parses any char in the range 'a' - 'z'. Returns the parsed char.
-val asciiLower: Parser<char,'u>
+val asciiLower<'u> : Parser<char,'u>
 
 /// Parses any char in the range 'a' - 'z' and 'A' - 'Z'. Returns the parsed char.
-val asciiLetter: Parser<char,'u>
+val asciiLetter<'u> : Parser<char,'u>
 
 /// Parses any UTF-16 uppercase letter char identified by `System.Char.IsUpper`.
 /// Returns the parsed char.
-val upper: Parser<char,'u>
+val upper<'u> : Parser<char,'u>
 
 /// Parses any UTF-16 lowercase letter char identified by `System.Char.IsLower`.
 /// Returns the parsed char.
-val lower: Parser<char,'u>
+val lower<'u> : Parser<char,'u>
 
 /// Parses any UTF-16 letter char identified by `System.Char.IsLetter`.
 /// Returns the parsed char.
-val letter: Parser<char,'u>
+val letter<'u> : Parser<char,'u>
 
 /// Parses any char in the range '0' - '9'. Returns the parsed char.
-val digit: Parser<char,'u>
+val digit<'u> : Parser<char,'u>
 
 /// Parses any char in the range '0' - '9', 'a' - 'f' and 'A' - 'F'. Returns the parsed char.
-val hex: Parser<char,'u>
+val hex<'u> : Parser<char,'u>
 
 /// Parses any char in the range '0' - '7'. Returns the parsed char.
-val octal: Parser<char,'u>
+val octal<'u> : Parser<char,'u>
 
 // predicate functions corresponding to the above parsers
 
@@ -207,7 +192,7 @@ val inline isOctal:         char -> bool
 
 /// Parses the tab char '\t' and returns '\t'. Note that a tab char is treated like any other non-newline char:
 /// the column number is incremented by (only) 1.
-val tab: Parser<char,'u>
+val tab<'u> : Parser<char,'u>
 
 /// Parses a newline ("\n", "\r\n" or "\r"). Returns '\n'.
 /// Is equivalent to `pchar '\n'`.
@@ -233,24 +218,24 @@ val unicodeNewlineReturn: 'a -> Parser<'a,'u>
 
 /// Skips over any sequence of *zero* or more whitespaces (space (' '), tab ('\t')
 /// or newline ("\n", "\r\n" or "\r")).
-val spaces: Parser<unit,'u>
+val spaces<'u> : Parser<unit,'u>
 
 /// Skips over any sequence of *one* or more whitespaces (space (' '), tab('\t')
 /// or newline ("\n", "\r\n" or "\r")).
-val spaces1: Parser<unit,'u>
+val spaces1<'u> : Parser<unit,'u>
 
 /// Skips over any sequence of *one* or more unicode whitespaces and
 /// registers any unicode newline ("\n", "\r\n", "\r", "\u0085, "\u000C",
 /// "\u2028"or "\u2029") as a newline.
-val unicodeSpaces: Parser<unit,'u>
+val unicodeSpaces<'u> : Parser<unit,'u>
 
 /// Skips over any sequence of *one* or more unicode whitespaces and
 /// registers any unicode newline ("\n", "\r\n", "\r", "\u0085, "\u000C",
 /// "\u2028"or "\u2029") as a newline.
-val unicodeSpaces1: Parser<unit,'u>
+val unicodeSpaces1<'u> : Parser<unit,'u>
 
 /// The parser `eof` only succeeds at the end of the input. It never consumes input.
-val eof: Parser<unit,'u>
+val eof<'u> : Parser<unit,'u>
 
 
 // ------------------------
@@ -539,8 +524,14 @@ type NumberLiteralOptions =
 [<Struct>]
 [<CustomEquality;NoComparison>]
 type NumberLiteral =
-    new: string:string * info:NumberLiteralResultFlags
-         * suffixChar0: char * suffixChar1: char * suffixChar2: char * suffixChar3: char -> NumberLiteral
+    new: 
+      #if NETCOREAPP2_1
+      ReadOnlyMemory<char>
+      #else
+      string
+      #endif
+          * info:NumberLiteralResultFlags
+          * suffixChar0: char * suffixChar1: char * suffixChar2: char * suffixChar3: char -> NumberLiteral
 
     /// The parsed number literal string. Only includes the parsed suffix chars if the
     /// `NumberLiteralOptions` passed to the `numberLiteral` parser have the `IncludeSuffixCharsInString` flag set.
@@ -616,7 +607,7 @@ val numberLiteralE:    NumberLiteralOptions -> errorInCaseNoLiteralFound: ErrorM
 /// without consuming input, if not at least one digit (including the '0' in "0x") can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after "0x",
 /// after consuming input, if the value represented by the input string (after rounding) is greater than `System.Double.MaxValue` or less than `System.Double.MinValue`.
-val pfloat: Parser<float,'u>
+val pfloat<'u> : Parser<float,'u>
 
 
 /// Parses an integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
@@ -624,56 +615,56 @@ val pfloat: Parser<float,'u>
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than `System.Int64.MaxValue` or less than `System.Int64.MinValue`.
-val pint64: Parser<int64,'u>
+val pint64<'u> : Parser<int64,'u>
 
 /// Parses an integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than `System.Int32.MaxValue` or less than `System.Int32.MinValue`.
-val pint32: Parser<int32,'u>
+val pint32<'u> : Parser<int32,'u>
 
 /// Parses an integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than `System.Int16.MaxValue` or less than `System.Int16.MinValue`.
-val pint16: Parser<int16,'u>
+val pint16<'u> : Parser<int16,'u>
 
 /// Parses an integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than 127 or less than -128.
-val pint8: Parser<int8,'u>
+val pint8<'u> : Parser<int8,'u>
 
 /// Parses an unsigned integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than `System.UInt64.MaxValue`.
-val puint64: Parser<uint64,'u>
+val puint64<'u> : Parser<uint64,'u>
 
 /// Parses an unsigned integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than `System.UInt32.MaxValue`.
-val puint32: Parser<uint32,'u>
+val puint32<'u> : Parser<uint32,'u>
 
 /// Parses an unsigned integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than `System.UInt16.MaxValue`.
-val puint16: Parser<uint16,'u>
+val puint16<'u> : Parser<uint16,'u>
 
 /// Parses an unsigned integer in decimal, hexadecimal ("0x" prefix), octal ("0o") or binary ("0b") format.
 /// The parser fails
 /// without consuming input, if not at least one digit (including the '0' in the format specifiers "0x" etc.) can be parsed,
 /// after consuming input, if no digit comes after an exponent marker or no hex digit comes after a format specifier,
 /// after consuming input, if the value represented by the input string is greater than 255.
-val puint8: Parser<uint8,'u>
+val puint8<'u> : Parser<uint8,'u>
 
 
 // -------------------
@@ -681,22 +672,22 @@ val puint8: Parser<uint8,'u>
 // -------------------
 
 /// `notFollowedByEOF` is an optimized implementation of `notFollowedByL eof "end of input"`.
-val notFollowedByEof: Parser<unit,'u>
+val notFollowedByEof<'u> : Parser<unit,'u>
 
 /// `followedByNewline` is an optimized implementation of `followedByL newline "newline"`.
-val followedByNewline: Parser<unit,'u>
+val followedByNewline<'u> : Parser<unit,'u>
 
 /// `notFollowedByNewline` is an optimized implementation of `notFollowedByL newline "newline"`.
-val notFollowedByNewline: Parser<unit,'u>
+val notFollowedByNewline<'u> : Parser<unit,'u>
 
 /// `followedByString str` is an optimized implementation of `followedByL (pstring str) ("'" + str + "'")`.
-val followedByString:      string -> Parser<unit,'u>
+val followedByString<'u> :      string -> Parser<unit,'u>
 /// `followedByStringCI str` is an optimized implementation of `followedByL (pstringCI str) ("'" + str + "'")`.
-val followedByStringCI:    string -> Parser<unit,'u>
+val followedByStringCI<'u> :    string -> Parser<unit,'u>
 /// `notFollowedByString str` is an optimized implementation of `notFollowedByL (pstring str) ("'" + str + "'")`.
-val notFollowedByString:   string -> Parser<unit,'u>
+val notFollowedByString<'u> :   string -> Parser<unit,'u>
 /// `notFollowedByStringCI str` is an optimized implementation of `notFollowedByL (pstringCI str) ("'" + str + "'")`.
-val notFollowedByStringCI: string -> Parser<unit,'u>
+val notFollowedByStringCI<'u> : string -> Parser<unit,'u>
 
 /// `nextCharSatisfies f` is an optimized implementation of `followedBy (satisfy f)`.
 val nextCharSatisfies: (char -> bool) -> Parser<unit,'u>

@@ -3,7 +3,7 @@
 
 using System;
 
-namespace FParsec {
+namespace Spreads.Slang.FParsec {
 
 internal static class Errors {
     static private ErrorMessageList Expected(string str) {

@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics;
 
-namespace FParsec {
+namespace Spreads.Slang.FParsec {
 
 #if !LOW_TRUST
     unsafe

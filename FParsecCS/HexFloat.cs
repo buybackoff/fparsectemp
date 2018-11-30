@@ -3,7 +3,7 @@
 
 using System;
 
-namespace FParsec {
+namespace Spreads.Slang.FParsec {
 
 public static class HexFloat {
 

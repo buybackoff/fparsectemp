@@ -1,6 +1,6 @@
-﻿using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Spreads.Slang.FParsec;
 
 [assembly: ComVisible(false)]
 
@@ -9,10 +9,11 @@ using System.Runtime.InteropServices;
 //    [assembly: System.Security.SecurityTransparent]
 //#endif
 
-[assembly: InternalsVisibleTo ("FParsec" + FParsec.CommonAssemblyInfo.StrongNamePublicKey)]
-[assembly: InternalsVisibleTo (FParsec.CommonAssemblyInfo.TestAssemblyName + FParsec.CommonAssemblyInfo.StrongNamePublicKey)]
+[assembly: InternalsVisibleTo ("Spreads.Slang.FParsec" + CommonAssemblyInfo.StrongNamePublicKey)]
+[assembly: InternalsVisibleTo (CommonAssemblyInfo.TestAssemblyName + CommonAssemblyInfo.StrongNamePublicKey)]
 
-namespace FParsec {
+// ReSharper disable once CheckNamespace
+namespace Spreads.Slang.FParsec {
 
 internal static partial class CommonAssemblyInfo {
     public const string TestAssemblyName = "Test";
