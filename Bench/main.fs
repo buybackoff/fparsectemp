@@ -17,7 +17,7 @@ let main(args: string[]) =
     // If the file has no byte order marks, System.Text.Encoding.Default
     // is assumed to be the encoding.
     // The parser result will be the abstract syntax tree of the input file.
-    let count = 1_000_000L;
+    let count = 2_000_000L;
     //let x = Spreads.Utils.Benchmark.Run("xxx", count * 1000L)
     // let list = new List<_>(int count)
     let result =
@@ -25,8 +25,8 @@ let main(args: string[]) =
       // if args.Length <> 1 then
       let mutable x = Unchecked.defaultof<_>
       for i in 1L..count do
-        x <- Calculator.calculate " ( ( exp 0 + (6 / ( 1 +2 ) )- 123456 )/ 2+123 + 877) * 3^2 / 3"
-        //Sx <- parseJsonString "{\"a\": 123, \"b\": true }" // , \"c\": null, \"d\": {\"nested\":\"asd\"} }"
+        // x <- Calculator.calculate " ( ( exp 0 + (6 / ( 1 +2 ) )- 123456 )/ 2+123 + 877) * 3^2 / 3"
+        x <- parseJsonString "{\"a\": 123, \"b\": true }" // , \"c\": null, \"d\": {\"nested\":\"asd\"} }"
         // list.Add(x)
       Console.WriteLine("FINISHED")
       x

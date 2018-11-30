@@ -1109,7 +1109,7 @@ type NumberLiteral(string:
         if isNotNull string then string.GetHashCode() else 0
         #endif
 
-let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: ErrorMessageList) (stream: CharStream<'u>) =
+let inline numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: ErrorMessageList) (stream: CharStream<'u>) =
     let index0 = stream.IndexToken
     let stateTag = stream.StateTag
     let mutable c = stream.Peek()
@@ -1292,35 +1292,74 @@ let numberLiteralE (opt: NumberLiteralOptions) (errorInCaseNoLiteralFound: Error
 
 // let numberLiteral opt label = numberLiteralE opt (expected label)
 
+
+[<Sealed>]
+type internal PFloat<'u>
+    () =
+    inherit Parser<float,'u>()
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
+    member __.Parse(stream:CharStream<'u>) =
+        let reply = numberLiteralE NLO.DefaultFloat Errors.ExpectedFloatingPointNumber stream
+        if reply.Status = Ok then
+            let nl = reply.Result
+            try
+                let d = if nl.IsDecimal then
+                            #if NETCOREAPP2_1
+                            System.Double.Parse(nl.Slice.Span) //, Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture)
+                            #else
+                            System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
+                            #endif
+                        elif nl.IsHexadecimal then
+                            floatOfHexString nl.String
+                        elif nl.IsInfinity then
+                            if nl.HasMinusSign then System.Double.NegativeInfinity else System.Double.PositiveInfinity
+                        else
+                            System.Double.NaN
+                Reply(d)
+            with e ->
+                let error = if   (e :? System.OverflowException) then Errors.NumberOutsideOfDoubleRange
+                            elif (e :? System.FormatException) then messageError "The floating-point number has an invalid format (this error is unexpected, please report this error message to fparsec@quanttec.com)."
+                            else reraise()
+                stream.Skip(-nl.String.Length)
+                Reply(FatalError, error)
+        else
+            Reply(reply.Status, reply.Error)
+
+    override __.InvokeImpl(stream:CharStream<'u>) = __.Parse(stream)
+
+    interface IParser<float,'u> with
+        member __.Parse(stream) = __.Parse(stream)
+
 let pfloat<'u> : Parser<float,'u> =
-    { new Parser<_,_>() with 
-        override __.InvokeImpl(stream) =
-            let reply = numberLiteralE NLO.DefaultFloat Errors.ExpectedFloatingPointNumber stream
-            if reply.Status = Ok then
-                let nl = reply.Result
-                try
-                    let d = if nl.IsDecimal then
-                                #if NETCOREAPP2_1
-                                System.Double.Parse(nl.Slice.Span, Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture)
-                                #else
-                                System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
-                                #endif
-                            elif nl.IsHexadecimal then
-                                floatOfHexString nl.String
-                            elif nl.IsInfinity then
-                                if nl.HasMinusSign then System.Double.NegativeInfinity else System.Double.PositiveInfinity
-                            else
-                                System.Double.NaN
-                    Reply(d)
-                with e ->
-                    let error = if   (e :? System.OverflowException) then Errors.NumberOutsideOfDoubleRange
-                                elif (e :? System.FormatException) then messageError "The floating-point number has an invalid format (this error is unexpected, please report this error message to fparsec@quanttec.com)."
-                                else reraise()
-                    stream.Skip(-nl.String.Length)
-                    Reply(FatalError, error)
-            else
-                Reply(reply.Status, reply.Error)
-    }
+    PFloat() :> Parser<float,'u>
+    //{ new Parser<_,_>() with 
+    //    override __.InvokeImpl(stream) =
+    //        let reply = numberLiteralE NLO.DefaultFloat Errors.ExpectedFloatingPointNumber stream
+    //        if reply.Status = Ok then
+    //            let nl = reply.Result
+    //            try
+    //                let d = if nl.IsDecimal then
+    //                            #if NETCOREAPP2_1
+    //                            System.Double.Parse(nl.Slice.Span, Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture)
+    //                            #else
+    //                            System.Double.Parse(nl.String, System.Globalization.CultureInfo.InvariantCulture)
+    //                            #endif
+    //                        elif nl.IsHexadecimal then
+    //                            floatOfHexString nl.String
+    //                        elif nl.IsInfinity then
+    //                            if nl.HasMinusSign then System.Double.NegativeInfinity else System.Double.PositiveInfinity
+    //                        else
+    //                            System.Double.NaN
+    //                Reply(d)
+    //            with e ->
+    //                let error = if   (e :? System.OverflowException) then Errors.NumberOutsideOfDoubleRange
+    //                            elif (e :? System.FormatException) then messageError "The floating-point number has an invalid format (this error is unexpected, please report this error message to fparsec@quanttec.com)."
+    //                            else reraise()
+    //                stream.Skip(-nl.String.Length)
+    //                Reply(FatalError, error)
+    //        else
+    //            Reply(reply.Status, reply.Error)
+    //}
 
 let internal parseUInt64 (c0: char) (stream: CharStream<'u>) (status: ReplyStatus byref) (error: ErrorMessageList byref) =
     Debug.Assert(isDigit c0 && (status = Ok))

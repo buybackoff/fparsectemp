@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>FParsecCS</AssemblyName>
     <RootNamespace>FParsec</RootNamespace>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>1591</NoWarn>

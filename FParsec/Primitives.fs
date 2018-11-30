@@ -101,22 +101,42 @@ let (.>>) (p: Parser<'a,'u>) (q: Parser<'b,'u>) = TakeLeftParser(p,q) :> Parser<
     //        reply1
     //}
 
+//[<Sealed>]
+//type internal PTakeBoth<'a,'b,'u>
+//    (p: Parser<'a,'u>, q: Parser<'b,'u>) =
+//    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
+//    member __.Parse(stream:CharStream<'u>) =
+//        let reply1 = p.Invoke stream
+//        if reply1.Status = Ok then
+//            let stateTag1 = stream.StateTag
+//            let reply2 = q.Invoke stream
+//            let error = if stateTag1 <> stream.StateTag then reply2.Error
+//                        else mergeErrors reply1.Error reply2.Error
+//            let result = if reply2.Status = Ok then struct (reply1.Result, reply2.Result)
+//                          else Unchecked.defaultof<_>
+//            Reply(reply2.Status, result, error)
+//        else
+//            Reply(reply1.Status, reply1.Error)
+
+//    interface IParser<struct ('a * 'b),'u> with
+//        member __.Parse(stream) = __.Parse(stream)
 
 let (.>>.) (p: Parser<'a,'u>) (q: Parser<'b,'u>) =
-    { new Parser<_,_>() with
-        override __.InvokeImpl(stream) =
-            let reply1 = p.Invoke stream
-            if reply1.Status = Ok then
-                let stateTag1 = stream.StateTag
-                let reply2 = q.Invoke stream
-                let error = if stateTag1 <> stream.StateTag then reply2.Error
-                            else mergeErrors reply1.Error reply2.Error
-                let result = if reply2.Status = Ok then struct (reply1.Result, reply2.Result)
-                             else Unchecked.defaultof<_>
-                Reply(reply2.Status, result, error)
-            else
-                Reply(reply1.Status, reply1.Error)
-    }
+    Parser<_,_,_>(PTakeBoth(p,q)) :> Parser<struct ('a * 'b),'u>
+    //{ new Parser<_,_>() with
+    //    override __.InvokeImpl(stream) =
+    //        let reply1 = p.Invoke stream
+    //        if reply1.Status = Ok then
+    //            let stateTag1 = stream.StateTag
+    //            let reply2 = q.Invoke stream
+    //            let error = if stateTag1 <> stream.StateTag then reply2.Error
+    //                        else mergeErrors reply1.Error reply2.Error
+    //            let result = if reply2.Status = Ok then struct (reply1.Result, reply2.Result)
+    //                         else Unchecked.defaultof<_>
+    //            Reply(reply2.Status, result, error)
+    //        else
+    //            Reply(reply1.Status, reply1.Error)
+    //}
 
 let between (popen: Parser<_,'u>) (pclose: Parser<_,'u>) (p: Parser<_,'u>) =
     { new Parser<_,_>() with
